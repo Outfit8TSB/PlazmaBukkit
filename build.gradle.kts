@@ -1,5 +1,6 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
+import io.papermc.paperweight.util.Git
 
 plugins {
     java
@@ -13,12 +14,13 @@ plugins {
 val jdkVersion = property("jdkVersion").toString().toInt()
 val projectName = property("projectName").toString()
 val projectRepo = property("projectRepo").toString()
+val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
 
 kotlin.jvmToolchain(jdkVersion)
 
 repositories {
     mavenCentral()
-    maven("https://papermc.io/repo/repository/maven-public/") {
+    maven("paperMavenPublicUrl") {
         content { onlyForConfigurations(configurations.paperclip.name) }
     }
 }
@@ -89,29 +91,37 @@ subprojects {
     }
 }
 
+val paperDir = layout.projectDirectory.dir("work/NogyangSpigot")
+val initSubmodules by tasks.registering {
+    outputs.upToDateWhen { false }
+    doLast {
+        Git(layout.projectDirectory)("submodule", "update", "--init").executeOut()
+    }
+}
+
 paperweight {
     serverProject = project(":${projectName.lowercase()}-server")
 
-    remapRepo = "https://repo.papermc.io/repository/maven-public/"
-    decompileRepo = "https://repo.papermc.io/repository/maven-public/"
-
-    usePaperUpstream(providers.gradleProperty("paperCommit")) {
-        withPaperPatcher {
-            apiPatchDir.set(projectDir.resolve("patches/api"))
-            apiOutputDir.set(projectDir.resolve("$projectName-API"))
-
-            serverPatchDir.set(projectDir.resolve("patches/server"))
-            serverOutputDir.set(projectDir.resolve("$projectName-Server"))
+patchTasks {
+                register("api") {
+                    upstreamDir = paperDir.dir("Paper-API")
+                    patchDir = layout.projectDirectory.dir("patches/api")
+                    outputDir = layout.projectDirectory.dir("$projectName-api")
+                }
+                register("server") {
+                    upstreamDir = paperDir.dir("Paper-Server")
+                    patchDir = layout.projectDirectory.dir("patches/server")
+                    outputDir = layout.projectDirectory.dir("$projectName-server")
+                    importMcDev = true
+                }
+                register("generatedApi") {
+                    isBareDirectory = true
+                    upstreamDir = paperDir.dir("paper-api-generator/generated")
+                    patchDir = layout.projectDirectory.dir("patches/generatedApi")
+                    outputDir = layout.projectDirectory.dir("paper-api-generator/generated")
+                }
+            }
         }
-
-        patchTasks.register("generatedApi") {
-            isBareDirectory = true
-            upstreamDirPath = "paper-api-generator/generated"
-            patchDir = projectDir.resolve("patches/generated-api")
-            outputDir = projectDir.resolve("paper-api-generator/generated")
-        }
-    }
-}
 
 alwaysUpToDate {
 

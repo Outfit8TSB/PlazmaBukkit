@@ -28,7 +28,7 @@ diff --git a/com/destroystokyo/paper/entity/ai/VanillaGoal.java b/com/destroysto
 index 02411466bdcf4ff731f01ccebb2c99942e0db878..2718c0e5061838b01881bb231c53f4da348adce3 100644
 --- a/com/destroystokyo/paper/entity/ai/VanillaGoal.java
 +++ b/com/destroystokyo/paper/entity/ai/VanillaGoal.java
-@@ -436,6 +442,18 @@ public interface VanillaGoal<T extends Mob> extends Goal<T> {
+@@ -436,6 +445,7 @@ public interface VanillaGoal<T extends Mob> extends Goal<T> {
  
      GoalKey<Zombie> ZOMBIE_ATTACK_TURTLE_EGG = create("zombie_attack_turtle_egg", Zombie.class);
  

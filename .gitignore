@@ -3,7 +3,7 @@ core.*
 hs_err_pid*
 
 # Intellij
-.idea/
+.idea/*
 *.iml
 *.ipr
 *.iws
@@ -18,16 +18,11 @@ out/
 nbproject/
 nbactions.xml
 
-# vscode
-.vscode/
-
 # Gradle
 !gradle-wrapper.jar
 .gradle/
 build/
 */build/
-run/
-javadoc/
 
 # we use maven!
 build.xml
@@ -38,6 +33,7 @@ target/
 dependency-reduced-pom.xml
 
 # various other potential build files
+build/
 bin/
 dist/
 manifest.mf
@@ -52,13 +48,13 @@ manifest.mf
 # Linux temp files
 *~
 
-# Paperweight
-build-data/
-*-API
-*-MojangAPI
-*-Server
-paper-api-generator
-compare.txt
-*.patch
-!patches/**/*
-upstream
+# other stuff
+/run
+
+/plazma-server/build.gradle.kts
+/plazma-server/src/minecraft
+/paper-server
+/plazma-api/build.gradle.kts
+/paper-api
+*.jar
+test-plugin.settings.gradle.kts

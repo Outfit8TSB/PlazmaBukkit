@@ -84,7 +84,8 @@ index 49546dfbb4dd006b5a2419908890ba4c2a0e207a..6963a76b9040c01dc60d0f24c9eef473
 +    api(api.bundles.api)
 +    api(api.bungeechat) { exclude("com.google.guava", "guava") }
 +    api(common.snakeyaml)
-+    api(api.jsonsimple) { isTransitive = false }
++    api(api.joml) { isTransitive = false } // https://github.com/JOML-CI/JOML/issues/352
++    api(api.jsonsimple) { isTransitive = false } { isTransitive = false } // junit
 +    apiAndDocs(platform(common.adventure.bom))
 +    apiAndDocs(common.bundles.adventure)
 +    api(common.log4j.api)

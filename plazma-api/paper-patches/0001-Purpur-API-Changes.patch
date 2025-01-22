@@ -1,0 +1,2227 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: AlphaKR93 <dev@alpha93.kr>
+Date: Tue, 21 Jan 2025 08:14:10 +0900
+Subject: [PATCH] Purpur API Changes
+
+
+diff --git a/src/generated/java/com/destroystokyo/paper/entity/ai/VanillaGoal.java b/src/generated/java/com/destroystokyo/paper/entity/ai/VanillaGoal.java
+index f15a7b4471cd31a487467ec7ecf7a186fa887a51..f09fefe6821d8b2b8c8f055985bacc2e042ca569 100644
+--- a/src/generated/java/com/destroystokyo/paper/entity/ai/VanillaGoal.java
++++ b/src/generated/java/com/destroystokyo/paper/entity/ai/VanillaGoal.java
+@@ -441,6 +441,26 @@ public interface VanillaGoal<T extends Mob> extends Goal<T> {
+ 
+     GoalKey<Zombie> ZOMBIE_ATTACK_TURTLE_EGG = create("zombie_attack_turtle_egg", Zombie.class);
+ 
++    // Purpur start - Ridables
++    GoalKey<Mob> MOB_HAS_RIDER = GoalKey.of(Mob.class, NamespacedKey.minecraft("has_rider"));
++    GoalKey<AbstractHorse> HORSE_HAS_RIDER = GoalKey.of(AbstractHorse.class, NamespacedKey.minecraft("horse_has_rider"));
++    GoalKey<Llama> LLAMA_HAS_RIDER = GoalKey.of(Llama.class, NamespacedKey.minecraft("llama_has_rider"));
++    // Purpur end - Ridables
++    // Purpur start - Phantoms attracted to crystals and crystals shoot phantoms
++    GoalKey<Phantom> FIND_CRYSTAL = GoalKey.of(Phantom.class, NamespacedKey.minecraft("find_crystal"));
++    GoalKey<Phantom> ORBIT_CRYSTAL = GoalKey.of(Phantom.class, NamespacedKey.minecraft("orbit_crystal"));
++    // Purpur end - Phantoms attracted to crystals and crystals shoot phantoms
++    // Purpur start - Add option to disable zombie aggressiveness towards villagers when lagging
++    GoalKey<Drowned> DROWNED_ATTACK_VILLAGER = GoalKey.of(Drowned.class, NamespacedKey.minecraft("drowned_attack_villager"));
++    GoalKey<Zombie> ZOMBIE_ATTACK_VILLAGER = GoalKey.of(Zombie.class, NamespacedKey.minecraft("zombie_attack_villager"));
++    // Purpur end - Add option to disable zombie aggressiveness towards villagers when lagging
++    // Purpur start - Configurable chance for wolves to spawn rabid
++    GoalKey<Wolf> AVOID_RABID_WOLF = GoalKey.of(Wolf.class, NamespacedKey.minecraft("avoid_rabid_wolf"));
++    // Purpur end - Configurable chance for wolves to spawn rabid
++    // Purpur start - Iron golem poppy calms anger
++    GoalKey<IronGolem> RECEIVE_FLOWER = GoalKey.of(IronGolem.class, NamespacedKey.minecraft("receive_flower"));
++    // Purpur end - Iron golem poppy calms anger
++
+     private static <T extends Mob> GoalKey<T> create(final String key, final Class<T> type) {
+         return GoalKey.of(type, NamespacedKey.minecraft(key));
+     }
+diff --git a/src/main/java/co/aikar/timings/TimedEventExecutor.java b/src/main/java/co/aikar/timings/TimedEventExecutor.java
+index 157617933a772451f6c073d97afaf305769b4d40..c178d77bd23a484043f50e46ccd603734f7b6059 100644
+--- a/src/main/java/co/aikar/timings/TimedEventExecutor.java
++++ b/src/main/java/co/aikar/timings/TimedEventExecutor.java
+@@ -80,9 +80,9 @@ public class TimedEventExecutor implements EventExecutor {
+             executor.execute(listener, event);
+             return;
+         }
+-        try (Timing ignored = timings.startTiming()){
++        //try (Timing ignored = timings.startTiming()){ // Purpur - Remove Timings
+             executor.execute(listener, event);
+-        }
++        //} // Purpur - Remove Timings
+     }
+ 
+     @Override
+diff --git a/src/main/java/co/aikar/timings/Timing.java b/src/main/java/co/aikar/timings/Timing.java
+index 4195efcfe044618052bb03dea34a4fb2ca7c44f0..acd06662bf1da1f12f73e2e85c0fd1b10f3b8b93 100644
+--- a/src/main/java/co/aikar/timings/Timing.java
++++ b/src/main/java/co/aikar/timings/Timing.java
+@@ -39,6 +39,7 @@ public interface Timing extends AutoCloseable {
+      * @return Timing
+      */
+     @NotNull
++    @io.papermc.paper.annotation.DoNotUse // Purpur - Remove Timings
+     Timing startTiming();
+ 
+     /**
+@@ -46,6 +47,7 @@ public interface Timing extends AutoCloseable {
+      *
+      * Will automatically be called when this Timing is used with try-with-resources
+      */
++    @io.papermc.paper.annotation.DoNotUse // Purpur - Remove Timings
+     void stopTiming();
+ 
+     /**
+@@ -56,6 +58,7 @@ public interface Timing extends AutoCloseable {
+      * @return Timing
+      */
+     @NotNull
++    @io.papermc.paper.annotation.DoNotUse // Purpur - Remove Timings
+     Timing startTimingIfSync();
+ 
+     /**
+@@ -65,12 +68,14 @@ public interface Timing extends AutoCloseable {
+      *
+      * But only if we are on the primary thread.
+      */
++    @io.papermc.paper.annotation.DoNotUse // Purpur - Remove Timings
+     void stopTimingIfSync();
+ 
+     /**
+      * @deprecated Doesn't do anything - Removed
+      */
+     @Deprecated
++    @io.papermc.paper.annotation.DoNotUse // Purpur - Remove Timings
+     void abort();
+ 
+     /**
+@@ -82,5 +87,6 @@ public interface Timing extends AutoCloseable {
+     TimingHandler getTimingHandler();
+ 
+     @Override
++    @io.papermc.paper.annotation.DoNotUse // Purpur - Remove Timings
+     void close();
+ }
+diff --git a/src/main/java/co/aikar/timings/Timings.java b/src/main/java/co/aikar/timings/Timings.java
+index 95b7cdf0677ef71e6885fa78aa5c75bb500f5f53..627922fa5c65e9b77e79cd896c8c52889f5a0cc5 100644
+--- a/src/main/java/co/aikar/timings/Timings.java
++++ b/src/main/java/co/aikar/timings/Timings.java
+@@ -124,7 +124,7 @@ public final class Timings {
+     @NotNull
+     public static Timing ofStart(@NotNull Plugin plugin, @NotNull String name, @Nullable Timing groupHandler) {
+         Timing timing = of(plugin, name, groupHandler);
+-        timing.startTiming();
++        //timing.startTiming(); // Purpur - Remove Timings
+         return timing;
+     }
+ 
+@@ -146,7 +146,7 @@ public final class Timings {
+      */
+     public static void setTimingsEnabled(boolean enabled) {
+         if (enabled && !warnedAboutDeprecationOnEnable) {
+-            Bukkit.getLogger().severe(PlainTextComponentSerializer.plainText().serialize(deprecationMessage()));
++            //Bukkit.getLogger().severe(PlainTextComponentSerializer.plainText().serialize(deprecationMessage())); // Purpur - Remove Timings
+             warnedAboutDeprecationOnEnable = true;
+         }
+     }
+@@ -322,4 +322,3 @@ public final class Timings {
+         return TimingsManager.getHandler(groupName, name, groupHandler);
+     }
+ }
+-
+diff --git a/src/main/java/co/aikar/timings/TimingsCommand.java b/src/main/java/co/aikar/timings/TimingsCommand.java
+index b83e5ff7ada8771fdf27ba9807c77ba6a4ce12da..04d0dc27406e9f96224f88edb1c535176e84d395 100644
+--- a/src/main/java/co/aikar/timings/TimingsCommand.java
++++ b/src/main/java/co/aikar/timings/TimingsCommand.java
+@@ -47,7 +47,7 @@ public class TimingsCommand extends BukkitCommand {
+     public TimingsCommand(@NotNull String name) {
+         super(name);
+         this.description = "Manages Spigot Timings data to see performance of the server.";
+-        this.usageMessage = "/timings <reset|report|on|off|verbon|verboff>";
++        this.usageMessage = "/timings";// <reset|report|on|off|verbon|verboff>"; // Purpur - Remove Timings
+         this.setPermission("bukkit.command.timings");
+     }
+ 
+@@ -57,7 +57,12 @@ public class TimingsCommand extends BukkitCommand {
+             return true;
+         }
+         if (true) {
+-            sender.sendMessage(Timings.deprecationMessage());
++            // Purpur start - Remove Timings
++            net.kyori.adventure.text.minimessage.MiniMessage mm = net.kyori.adventure.text.minimessage.MiniMessage.miniMessage();
++            sender.sendMessage(mm.deserialize("<gold>Purpur has removed timings to save your performance. Please use <click:suggest_command:'/spark'><grey>/spark</grey></click> instead"));
++            sender.sendMessage(mm.deserialize("<gold>For more information, view its documentation at"));
++            sender.sendMessage(mm.deserialize("<gold><click:open_url:'https://spark.lucko.me/docs/Command-Usage'>https://spark.lucko.me/docs/Command-Usage</click>"));
++            // Purpur end - Remove Timings
+             return true;
+         }
+         if (args.length < 1) {
+@@ -118,7 +123,7 @@ public class TimingsCommand extends BukkitCommand {
+         Preconditions.checkNotNull(args, "Arguments cannot be null");
+         Preconditions.checkNotNull(alias, "Alias cannot be null");
+ 
+-        if (args.length == 1) {
++        if (false && args.length == 1) { // Purpur - Remove Timings
+             return StringUtil.copyPartialMatches(args[0], TIMINGS_SUBCOMMANDS,
+                 new ArrayList<String>(TIMINGS_SUBCOMMANDS.size()));
+         }
+diff --git a/src/main/java/com/destroystokyo/paper/util/VersionFetcher.java b/src/main/java/com/destroystokyo/paper/util/VersionFetcher.java
+index 023cc52a9e28e1238c7452c0f3f577f2850fd861..00b3f46ddd26ae08744d3dba211f92624d4b1063 100644
+--- a/src/main/java/com/destroystokyo/paper/util/VersionFetcher.java
++++ b/src/main/java/com/destroystokyo/paper/util/VersionFetcher.java
+@@ -28,6 +28,12 @@ public interface VersionFetcher {
+      */
+     Component getVersionMessage(String serverVersion);
+ 
++    // Purpur start
++    default int distance() {
++        return 0;
++    }
++    // Purpur end
++
+     @ApiStatus.Internal
+     class DummyVersionFetcher implements VersionFetcher {
+ 
+diff --git a/src/main/java/io/papermc/paper/ServerBuildInfo.java b/src/main/java/io/papermc/paper/ServerBuildInfo.java
+index 652ff54e7c50412503725d628bfe72ed03059790..fb1fe2651e53a9bf46b3632c638e13eea9dcda93 100644
+--- a/src/main/java/io/papermc/paper/ServerBuildInfo.java
++++ b/src/main/java/io/papermc/paper/ServerBuildInfo.java
+@@ -19,6 +19,12 @@ public interface ServerBuildInfo {
+      */
+     Key BRAND_PAPER_ID = Key.key("papermc", "paper");
+ 
++    // Purpur start
++    /**
++     * The brand id for Purpur.
++     */
++    Key BRAND_PURPUR_ID = Key.key("purpurmc", "purpur");
++    // Purpur end
+     /**
+      * Gets the {@code ServerBuildInfo}.
+      *
+diff --git a/src/main/java/org/bukkit/Bukkit.java b/src/main/java/org/bukkit/Bukkit.java
+index 9196b1e62b328b1e9790b966600aba9681dd0ddc..249d6549543c059694a9372200b8581feb8dd8f8 100644
+--- a/src/main/java/org/bukkit/Bukkit.java
++++ b/src/main/java/org/bukkit/Bukkit.java
+@@ -2980,4 +2980,133 @@ public final class Bukkit {
+     public static Server.Spigot spigot() {
+         return server.spigot();
+     }
++
++    // Purpur start - Bring back server name
++    /**
++     * Get the name of this server
++     * @return the name of the server
++     */
++    @NotNull
++    public static String getServerName() {
++        return server.getServerName();
++    }
++    // Purpur end - Bring back server name
++
++    // Purpur start - Lagging threshold
++    /**
++     * Check if server is lagging according to laggy threshold setting
++     *
++     * @return True if lagging
++     */
++    public static boolean isLagging() {
++        return server.isLagging();
++    }
++    // Purpur end - Lagging threshold
++
++    // Purpur start - Added the ability to add combustible items
++    /**
++     * Add an Item as fuel for furnaces
++     *
++     * @param material The material that will be the fuel
++     * @param burnTime The time (in ticks) this item will burn for
++     */
++    public static void addFuel(@NotNull Material material, int burnTime) {
++        server.addFuel(material, burnTime);
++    }
++
++    /**
++     * Remove an item as fuel for furnaces
++     *
++     * @param material The material that will no longer be a fuel
++     */
++    public static void removeFuel(@NotNull Material material) {
++        server.removeFuel(material);
++    }
++    // Purpur end - Added the ability to add combustible items
++
++        // Purpur start - Debug Marker API
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on the server.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     */
++    public static void sendBlockHighlight(@NotNull Location location, int duration) {
++        server.sendBlockHighlight(location, duration);
++    }
++
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on the server.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param argb Color of the highlight. ARGB int. Will be ignored on some versions of vanilla client
++     */
++    public static void sendBlockHighlight(@NotNull Location location, int duration, int argb) {
++        server.sendBlockHighlight(location, duration, argb);
++    }
++
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on the server.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param text Text to show above the highlight
++     */
++    public static void sendBlockHighlight(@NotNull Location location, int duration, @NotNull String text) {
++        server.sendBlockHighlight(location, duration, text);
++    }
++
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on the server.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param text Text to show above the highlight
++     * @param argb Color of the highlight. ARGB int. Will be ignored on some versions of vanilla client
++     */
++    public static void sendBlockHighlight(@NotNull Location location, int duration, @NotNull String text, int argb) {
++        server.sendBlockHighlight(location, duration, text, argb);
++    }
++
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on the server.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param color Color of the highlight. Will be ignored on some versions of vanilla client
++     * @param transparency Transparency of the highlight
++     * @throws IllegalArgumentException If transparency is outside 0-255 range
++     */
++    public static void sendBlockHighlight(@NotNull Location location, int duration, @NotNull org.bukkit.Color color, int transparency) {
++        server.sendBlockHighlight(location, duration, color, transparency);
++    }
++
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on the server.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param text Text to show above the highlight
++     * @param color Color of the highlight. Will be ignored on some versions of vanilla client
++     * @param transparency Transparency of the highlight
++     * @throws IllegalArgumentException If transparency is outside 0-255 range
++     */
++    public static void sendBlockHighlight(@NotNull Location location, int duration, @NotNull String text, @NotNull org.bukkit.Color color, int transparency) {
++        server.sendBlockHighlight(location, duration, text, color, transparency);
++    }
++
++    /**
++     * Clears all debug block highlights for all players on the server.
++     */
++    public static void clearBlockHighlights() {
++        server.clearBlockHighlights();
++    }
++    // Purpur end - Debug Marker API
+ }
+diff --git a/src/main/java/org/bukkit/ChatColor.java b/src/main/java/org/bukkit/ChatColor.java
+index 918a045165cdcde264bc24082b7afebb407271de..f283bcabff7fe6eede6cf4344537e43048c35166 100644
+--- a/src/main/java/org/bukkit/ChatColor.java
++++ b/src/main/java/org/bukkit/ChatColor.java
+@@ -456,4 +456,77 @@ public enum ChatColor {
+             BY_CHAR.put(color.code, color);
+         }
+     }
++
++    // Purpur start - ChatColor conveniences
++    /**
++     * Convert legacy string into a string ready to be parsed by MiniMessage
++     *
++     * @param str Legacy string
++     * @return MiniMessage ready string
++     */
++    @NotNull
++    public static String toMM(@NotNull String str) {
++        StringBuilder sb = new StringBuilder(str);
++        java.util.regex.Matcher m = STRIP_COLOR_PATTERN.matcher(sb);
++        while (m.find()) {
++            sb.replace(m.start(), m.end(), sb.substring(m.start(), m.end()).toLowerCase());
++        }
++        return sb.toString()
++                .replace("&0", "<black>")
++                .replace("&1", "<dark_blue>")
++                .replace("&2", "<dark_green>")
++                .replace("&3", "<dark_aqua>")
++                .replace("&4", "<dark_red>")
++                .replace("&5", "<dark_purple>")
++                .replace("&6", "<gold>")
++                .replace("&7", "<grey>")
++                .replace("&8", "<dark_grey>")
++                .replace("&9", "<blue>")
++                .replace("&a", "<green>")
++                .replace("&b", "<aqua>")
++                .replace("&c", "<red>")
++                .replace("&d", "<light_purple>")
++                .replace("&e", "<yellow>")
++                .replace("&f", "<white>")
++                .replace("&k", "<obf>")
++                .replace("&l", "<b>")
++                .replace("&m", "<st>")
++                .replace("&n", "<u>")
++                .replace("&o", "<i>")
++                .replace("&r", "<r>");
++    }
++
++    @NotNull
++    public static net.kyori.adventure.text.Component parseMM(@NotNull String string, @Nullable Object... args) {
++        return net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(String.format(string, args));
++    }
++
++    @Deprecated
++    public static final Pattern HEX_PATTERN = Pattern.compile("(#[A-Fa-f0-9]{6})");
++
++    @Deprecated
++    @Nullable
++    public static String replaceHex(@Nullable String str) {
++        if (str != null) {
++            java.util.regex.Matcher matcher = HEX_PATTERN.matcher(str);
++            while (matcher.find()) {
++                String group = matcher.group(1);
++                str = str.replace(group, net.md_5.bungee.api.ChatColor.of(group).toString());
++            }
++        }
++        return str;
++    }
++
++    @Deprecated
++    @Nullable
++    public static String color(@Nullable String str) {
++        return color(str, true);
++    }
++
++    @Deprecated
++    @Nullable
++    public static String color(@Nullable String str, boolean parseHex) {
++        return str != null ? net.md_5.bungee.api.ChatColor.translateAlternateColorCodes('&', parseHex ? replaceHex(str) : str) : str;
++    }
++    // Purpur end - ChatColor conveniences
+ }
+diff --git a/src/main/java/org/bukkit/Material.java b/src/main/java/org/bukkit/Material.java
+index 9afafc00e457c721a1b20b05c6a5d330caa40dfb..6469d4e1097e694d8bf00610ed8d34de132bd19c 100644
+--- a/src/main/java/org/bukkit/Material.java
++++ b/src/main/java/org/bukkit/Material.java
+@@ -5812,4 +5812,40 @@ public enum Material implements Keyed, Translatable, net.kyori.adventure.transla
+         return this.asItemType().getDefaultDataTypes();
+     }
+     // Paper end - data component API
++
++    // Purpur start - ItemStack convenience methods
++    public boolean isArmor() {
++        switch (this) {
++            // <editor-fold defaultstate="collapsed" desc="isarmor">
++            case LEATHER_BOOTS:
++            case LEATHER_CHESTPLATE:
++            case LEATHER_HELMET:
++            case LEATHER_LEGGINGS:
++            case CHAINMAIL_BOOTS:
++            case CHAINMAIL_CHESTPLATE:
++            case CHAINMAIL_HELMET:
++            case CHAINMAIL_LEGGINGS:
++            case IRON_BOOTS:
++            case IRON_CHESTPLATE:
++            case IRON_HELMET:
++            case IRON_LEGGINGS:
++            case GOLDEN_BOOTS:
++            case GOLDEN_CHESTPLATE:
++            case GOLDEN_HELMET:
++            case GOLDEN_LEGGINGS:
++            case DIAMOND_BOOTS:
++            case DIAMOND_CHESTPLATE:
++            case DIAMOND_HELMET:
++            case DIAMOND_LEGGINGS:
++            case NETHERITE_BOOTS:
++            case NETHERITE_CHESTPLATE:
++            case NETHERITE_HELMET:
++            case NETHERITE_LEGGINGS:
++            case TURTLE_HELMET:
++                return true;
++            default:
++                return false;
++        }
++    }
++    // Purpur end - ItemStack convenience methods
+ }
+diff --git a/src/main/java/org/bukkit/OfflinePlayer.java b/src/main/java/org/bukkit/OfflinePlayer.java
+index 5622fe3165baad8138c22cfc016ed6c3834cf702..6d31b561d915180fcd473b317721064feed28f37 100644
+--- a/src/main/java/org/bukkit/OfflinePlayer.java
++++ b/src/main/java/org/bukkit/OfflinePlayer.java
+@@ -573,4 +573,106 @@ public interface OfflinePlayer extends ServerOperator, AnimalTamer, Configuratio
+     @Override
+     io.papermc.paper.persistence.@NotNull PersistentDataContainerView getPersistentDataContainer();
+     // Paper end - add pdc to offline player
++
++    // Purpur start - OfflinePlayer API
++    /**
++     * Determines if the OfflinePlayer is allowed to fly via jump key double-tap like
++     * in creative mode.
++     *
++     * @return True if the player is allowed to fly.
++     */
++    public boolean getAllowFlight();
++
++    /**
++     * Sets if the OfflinePlayer is allowed to fly via jump key double-tap like in
++     * creative mode.
++     *
++     * @param flight If flight should be allowed.
++     */
++    public void setAllowFlight(boolean flight);
++
++    /**
++     * Checks to see if this player is currently flying or not.
++     *
++     * @return True if the player is flying, else false.
++     */
++    public boolean isFlying();
++
++    /**
++     * Makes this player start or stop flying.
++     *
++     * @param value True to fly.
++     */
++    public void setFlying(boolean value);
++
++    /**
++     * Sets the speed at which a client will fly. Negative values indicate
++     * reverse directions.
++     *
++     * @param value The new speed, from -1 to 1.
++     * @throws IllegalArgumentException If new speed is less than -1 or
++     *     greater than 1
++     */
++    public void setFlySpeed(float value) throws IllegalArgumentException;
++
++    /**
++     * Sets the speed at which a client will walk. Negative values indicate
++     * reverse directions.
++     *
++     * @param value The new speed, from -1 to 1.
++     * @throws IllegalArgumentException If new speed is less than -1 or
++     *     greater than 1
++     */
++    public void setWalkSpeed(float value) throws IllegalArgumentException;
++
++    /**
++     * Gets the current allowed speed that a client can fly.
++     *
++     * @return The current allowed speed, from -1 to 1
++     */
++    public float getFlySpeed();
++
++    /**
++     * Gets the current allowed speed that a client can walk.
++     *
++     * @return The current allowed speed, from -1 to 1
++     */
++    public float getWalkSpeed();
++
++    /**
++     * Sets OfflinePlayer's location. If player is online, it falls back to the Player#teleport implementation.
++     *
++     * @param destination
++     * @return true if teleportation was successful
++     */
++    public boolean teleportOffline(@NotNull org.bukkit.Location destination);
++
++    /**
++     * Sets OfflinePlayer's location. If player is online, it falls back to the Player#teleport implementation.
++     *
++     * @param destination
++     * @param cause Teleport cause used if player is online
++     * @return true if teleportation was successful
++     */
++    public boolean teleportOffline(@NotNull org.bukkit.Location destination, @NotNull org.bukkit.event.player.PlayerTeleportEvent.TeleportCause cause);
++
++    /**
++     * Sets OfflinePlayer's location. If player is online, it falls back to the Player#teleportAsync implementation.
++     *
++     * @param destination
++     * @return <code>true</code> if teleportation successful
++     */
++    @NotNull
++    public java.util.concurrent.CompletableFuture<Boolean> teleportOfflineAsync(@NotNull Location destination);
++
++    /**
++     * Sets OfflinePlayer's location. If player is online, it falls back to the Player#teleportAsync implementation.
++     *
++     * @param destination
++     * @param cause Teleport cause used if player is online
++     * @return <code>true</code> if teleportation successful
++     */
++    @NotNull
++    public java.util.concurrent.CompletableFuture<Boolean> teleportOfflineAsync(@NotNull Location destination, @NotNull org.bukkit.event.player.PlayerTeleportEvent.TeleportCause cause);
++    // Purpur end - OfflinePlayer API
+ }
+diff --git a/src/main/java/org/bukkit/Server.java b/src/main/java/org/bukkit/Server.java
+index 11923ef0ea75f702273ba5481ac6d46cc0f17697..594bcedd823acc87ed429ad8ef17b66e9dc15beb 100644
+--- a/src/main/java/org/bukkit/Server.java
++++ b/src/main/java/org/bukkit/Server.java
+@@ -2330,6 +2330,18 @@ public interface Server extends PluginMessageRecipient, net.kyori.adventure.audi
+         }
+         // Paper end
+ 
++        // Purpur start
++        @NotNull
++        public org.bukkit.configuration.file.YamlConfiguration getPurpurConfig() {
++            throw new UnsupportedOperationException("Not supported yet.");
++        }
++
++        @NotNull
++        public java.util.Properties getServerProperties() {
++            throw new UnsupportedOperationException("Not supported yet.");
++        }
++        // Purpur end
++
+         /**
+          * Sends the component to the player
+          *
+@@ -2654,4 +2666,111 @@ public interface Server extends PluginMessageRecipient, net.kyori.adventure.audi
+      */
+     void allowPausing(@NotNull org.bukkit.plugin.Plugin plugin, boolean value);
+     // Paper end - API to check if the server is sleeping
++
++    // Purpur start - Bring back server name
++    /**
++     * Get the name of this server
++     * @return the name of the server
++     */
++    @NotNull
++    String getServerName();
++    // Purpur end - Bring back server name
++
++    // Purpur start - Lagging threshold
++    /**
++     * Check if server is lagging according to laggy threshold setting
++     *
++     * @return True if lagging
++     */
++    boolean isLagging();
++    // Purpur end - Lagging threshold
++
++    // Purpur start - Added the ability to add combustible items
++    /**
++     * Add an Item as fuel for furnaces
++     *
++     * @param material The material that will be the fuel
++     * @param burnTime The time (in ticks) this item will burn for
++     */
++    public void addFuel(@NotNull Material material, int burnTime);
++
++    /**
++     * Remove an item as fuel for furnaces
++     *
++     * @param material The material that will no longer be a fuel
++     */
++    public void removeFuel(@NotNull Material material);
++    // Purpur end - Added the ability to add combustible items
++
++    // Purpur start - Debug Marker API
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on the server.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration);
++
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on the server.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param argb Color of the highlight. ARGB int. Will be ignored on some versions of vanilla client
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration, int argb);
++
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on the server.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param text Text to show above the highlight
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration, @NotNull String text);
++
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on the server.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param text Text to show above the highlight
++     * @param argb Color of the highlight. ARGB int. Will be ignored on some versions of vanilla client
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration, @NotNull String text, int argb);
++
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on the server.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param color Color of the highlight. Will be ignored on some versions of vanilla client
++     * @param transparency Transparency of the highlight
++     * @throws IllegalArgumentException If transparency is outside 0-255 range
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration, @NotNull org.bukkit.Color color, int transparency);
++
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on the server.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param text Text to show above the highlight
++     * @param color Color of the highlight. Will be ignored on some versions of vanilla client
++     * @param transparency Transparency of the highlight
++     * @throws IllegalArgumentException If transparency is outside 0-255 range
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration, @NotNull String text, @NotNull org.bukkit.Color color, int transparency);
++
++    /**
++     * Clears all debug block highlights for all players on the server.
++     */
++    void clearBlockHighlights();
++    // Purpur end - Debug Marker API
+ }
+diff --git a/src/main/java/org/bukkit/World.java b/src/main/java/org/bukkit/World.java
+index e99fa923d35b6dda0b02968bdcf6b43552517ea4..5ee6f017101a05b568b69627b1819d63dbe8094e 100644
+--- a/src/main/java/org/bukkit/World.java
++++ b/src/main/java/org/bukkit/World.java
+@@ -4238,6 +4238,86 @@ public interface World extends RegionAccessor, WorldInfo, PluginMessageRecipient
+     @Nullable
+     public DragonBattle getEnderDragonBattle();
+ 
++    // Purpur start
++    /**
++     * Gets the local difficulty (based on inhabited time) at a location
++     *
++     * @param location Location to check
++     * @return The local difficulty
++     */
++    public float getLocalDifficultyAt(@NotNull Location location);
++
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on this world.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration);
++
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on this world.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param argb Color of the highlight. ARGB int. Will be ignored on some versions of vanilla client
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration, int argb);
++
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on this world.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param text Text to show above the highlight
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration, @NotNull String text);
++
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on this world.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param text Text to show above the highlight
++     * @param argb Color of the highlight. ARGB int. Will be ignored on some versions of vanilla client
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration, @NotNull String text, int argb);
++
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on this world.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param color Color of the highlight. Will be ignored on some versions of vanilla client
++     * @param transparency Transparency of the highlight
++     * @throws IllegalArgumentException If transparency is outside 0-255 range
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration, @NotNull org.bukkit.Color color, int transparency);
++
++    /**
++     * Creates debug block highlight on specified block location and show it to all players on this world.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param text Text to show above the highlight
++     * @param color Color of the highlight. Will be ignored on some versions of vanilla client
++     * @param transparency Transparency of the highlight
++     * @throws IllegalArgumentException If transparency is outside 0-255 range
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration, @NotNull String text, @NotNull org.bukkit.Color color, int transparency);
++
++    /**
++     * Clears all debug block highlights for all players on this world.
++     */
++    void clearBlockHighlights();
++    // Purpur end
++
+     /**
+      * Get all {@link FeatureFlag} enabled in this world.
+      *
+diff --git a/src/main/java/org/bukkit/block/EntityBlockStorage.java b/src/main/java/org/bukkit/block/EntityBlockStorage.java
+index 739911cda33b373f99df627a3a378b37d7d461aa..58e16c12b06fa11d30b67f5038844ff9990790ae 100644
+--- a/src/main/java/org/bukkit/block/EntityBlockStorage.java
++++ b/src/main/java/org/bukkit/block/EntityBlockStorage.java
+@@ -47,6 +47,25 @@ public interface EntityBlockStorage<T extends Entity> extends TileState {
+     @NotNull
+     List<T> releaseEntities();
+ 
++    // Purpur start - Stored Bee API
++    /**
++     * Releases a stored entity, and returns the entity in the world.
++     *
++     * @param entity Entity to release
++     * @return The entity which was released, or null if the stored entity is not in the hive
++     */
++    @org.jetbrains.annotations.Nullable
++    T releaseEntity(@NotNull org.purpurmc.purpur.entity.StoredEntity<T> entity);
++
++    /**
++     * Gets all the entities currently stored in the block.
++     *
++     * @return List of all entities which are stored in the block
++     */
++    @NotNull
++    List<org.purpurmc.purpur.entity.StoredEntity<T>> getEntities();
++    // Purpur end - Stored Bee API
++
+     /**
+      * Add an entity to the block.
+      *
+diff --git a/src/main/java/org/bukkit/command/SimpleCommandMap.java b/src/main/java/org/bukkit/command/SimpleCommandMap.java
+index 5df19bd701c67506689fc7f49d91f99ebfbc83f0..685aa9d73f14a5e3a85b251b83fbe8134b0a244c 100644
+--- a/src/main/java/org/bukkit/command/SimpleCommandMap.java
++++ b/src/main/java/org/bukkit/command/SimpleCommandMap.java
+@@ -153,6 +153,19 @@ public class SimpleCommandMap implements CommandMap {
+             return false;
+         }
+ 
++        // Purpur start - ExecuteCommandEvent
++        String[] parsedArgs = Arrays.copyOfRange(args, 1, args.length);
++        org.purpurmc.purpur.event.ExecuteCommandEvent event = new org.purpurmc.purpur.event.ExecuteCommandEvent(sender, target, sentCommandLabel, parsedArgs);
++        if (!event.callEvent()) {
++            return true; // cancelled
++        }
++
++        sender = event.getSender();
++        target = event.getCommand();
++        sentCommandLabel = event.getLabel();
++        parsedArgs = event.getArgs();
++        // Purpur end - ExecuteCommandEvent
++
+         // Paper start - Plugins do weird things to workaround normal registration
+         if (target.timings == null) {
+             target.timings = co.aikar.timings.TimingsManager.getCommandTiming(null, target);
+@@ -160,10 +173,10 @@ public class SimpleCommandMap implements CommandMap {
+         // Paper end
+ 
+         try {
+-            try (co.aikar.timings.Timing ignored = target.timings.startTiming()) { // Paper - use try with resources
++            //try (co.aikar.timings.Timing ignored = target.timings.startTiming()) { // Paper - use try with resources // Purpur - Remove Timings
+             // Note: we don't return the result of target.execute as thats success / failure, we return handled (true) or not handled (false)
+-            target.execute(sender, sentCommandLabel, Arrays.copyOfRange(args, 1, args.length));
+-            } // target.timings.stopTiming(); // Spigot // Paper
++            target.execute(sender, sentCommandLabel, parsedArgs); // Purpur - ExecuteCommandEvent
++            //} // target.timings.stopTiming(); // Spigot // Paper // Purpur - Remove Timings
+         } catch (CommandException ex) {
+             server.getPluginManager().callEvent(new com.destroystokyo.paper.event.server.ServerExceptionEvent(new com.destroystokyo.paper.exception.ServerCommandException(ex, target, sender, args))); // Paper
+             //target.timings.stopTiming(); // Spigot // Paper
+diff --git a/src/main/java/org/bukkit/command/defaults/VersionCommand.java b/src/main/java/org/bukkit/command/defaults/VersionCommand.java
+index e64bb57f74e6d6f78927be228825b3e0bdf41f48..c880d0010849ab733ad13bbd18fab3c864d0cf61 100644
+--- a/src/main/java/org/bukkit/command/defaults/VersionCommand.java
++++ b/src/main/java/org/bukkit/command/defaults/VersionCommand.java
+@@ -215,7 +215,7 @@ public class VersionCommand extends BukkitCommand {
+         String version = Bukkit.getVersion();
+         // Paper start
+         if (version.startsWith("null")) { // running from ide?
+-            setVersionMessage(Component.text("Unknown version, custom build?", NamedTextColor.YELLOW));
++            setVersionMessage(Component.text("* Unknown version, custom build?", NamedTextColor.RED)); // Purpur
+             return;
+         }
+         setVersionMessage(getVersionFetcher().getVersionMessage(version));
+@@ -256,9 +256,11 @@ public class VersionCommand extends BukkitCommand {
+     // Paper start
+     private void setVersionMessage(final @NotNull Component msg) {
+         lastCheck = System.currentTimeMillis();
+-        final Component message = Component.textOfChildren(
+-            Component.text(Bukkit.getVersionMessage(), NamedTextColor.WHITE),
+-            Component.newline(),
++        // Purpur start
++        int distance = getVersionFetcher().distance();
++        final Component message = Component.join(net.kyori.adventure.text.JoinConfiguration.separator(Component.newline()),
++            ChatColor.parseMM("<grey>Current Purpur Version: %s%s*", distance == 0 ? "<green>" : distance > 0 ? "<yellow>" : "<red>", Bukkit.getVersion()),
++            // Purpur end
+             msg
+         );
+         this.versionMessage = Component.text()
+diff --git a/src/main/java/org/bukkit/enchantments/EnchantmentTarget.java b/src/main/java/org/bukkit/enchantments/EnchantmentTarget.java
+index 6fcc15d588239481136876d117ab346a8deac1dd..ad04cb5542f219f617bcb6ed60cf248ab53d83bc 100644
+--- a/src/main/java/org/bukkit/enchantments/EnchantmentTarget.java
++++ b/src/main/java/org/bukkit/enchantments/EnchantmentTarget.java
+@@ -227,6 +227,30 @@ public enum EnchantmentTarget {
+         public boolean includes(@NotNull Material item) {
+             return BREAKABLE.includes(item) || (WEARABLE.includes(item) && !item.equals(Material.ELYTRA)) || item.equals(Material.COMPASS);
+         }
++        // Purpur start - Add enchantment target for bows and crossbows
++    },
++
++    /**
++     * Allow the Enchantment to be placed on bows and crossbows.
++     */
++    BOW_AND_CROSSBOW {
++        @Override
++        public boolean includes(@NotNull Material item) {
++            return item.equals(Material.BOW) || item.equals(Material.CROSSBOW);
++        }
++        // Purpur end - Add enchantment target for bows and crossbows
++        // Purpur start - Shears can have looting enchantment
++    },
++
++    /**
++     * Allow the Enchantment to be placed on shears.
++     */
++    WEAPON_AND_SHEARS {
++        @Override
++        public boolean includes(@NotNull Material item) {
++            return WEAPON.includes(item) || item.equals(Material.SHEARS);
++        }
++        // Purpur end - Shears can have looting enchantment
+     };
+ 
+     /**
+diff --git a/src/main/java/org/bukkit/entity/Endermite.java b/src/main/java/org/bukkit/entity/Endermite.java
+index 7b379fb21e800a766ad022705a12dff6d42279ab..10a8d64ad2da0be2c14f34c3e7d1957c6f2883d1 100644
+--- a/src/main/java/org/bukkit/entity/Endermite.java
++++ b/src/main/java/org/bukkit/entity/Endermite.java
+@@ -3,25 +3,21 @@ package org.bukkit.entity;
+ public interface Endermite extends Monster {
+ 
+     /**
+-     * Gets whether this Endermite was spawned by a player.
++     * Gets whether this Endermite was spawned by a player from throwing an ender pearl
+      *
+-     * An Endermite spawned by a player will be attacked by nearby Enderman.
++     * An Endermite spawned by a player might be attacked by nearby Enderman depending on purpur.yml settings
+      *
+      * @return player spawned status
+-     * @deprecated this functionality no longer exists
+      */
+-    @Deprecated(since = "1.17")
+     boolean isPlayerSpawned();
+ 
+     /**
+-     * Sets whether this Endermite was spawned by a player.
++     * Sets whether this Endermite was spawned by a player from throwing an ender pearl
+      *
+-     * An Endermite spawned by a player will be attacked by nearby Enderman.
++     * An Endermite spawned by a player might be attacked by nearby Enderman depending on purpur.yml settings
+      *
+      * @param playerSpawned player spawned status
+-     * @deprecated this functionality no longer exists
+      */
+-    @Deprecated(since = "1.17")
+     void setPlayerSpawned(boolean playerSpawned);
+     // Paper start
+     /**
+diff --git a/src/main/java/org/bukkit/entity/Entity.java b/src/main/java/org/bukkit/entity/Entity.java
+index ddf7829eee5e3f0ded9319a5a0a7b2e2486320a4..49d3ca54a761e08cfe1bc770cb879223bf0e21e8 100644
+--- a/src/main/java/org/bukkit/entity/Entity.java
++++ b/src/main/java/org/bukkit/entity/Entity.java
+@@ -1196,4 +1196,59 @@ public interface Entity extends Metadatable, CommandSender, Nameable, Persistent
+      */
+     void broadcastHurtAnimation(@NotNull java.util.Collection<Player> players);
+     // Paper end - broadcast hurt animation
++
++    // Purpur start - Ridables
++    /**
++     * Get the riding player
++     *
++     * @return Riding player
++     */
++    @Nullable
++    Player getRider();
++
++    /**
++     * Check if entity is being ridden
++     *
++     * @return True if being ridden
++     */
++    boolean hasRider();
++
++    /**
++     * Check if entity is ridable
++     *
++     * @return True if ridable
++     */
++    boolean isRidable();
++
++    /**
++     * Check if entity is ridable in water
++     *
++     * @return True if ridable in water
++     */
++    boolean isRidableInWater();
++    // Purpur end - Ridables
++
++    // Purpur start - API for any mob to burn daylight
++    /**
++     * Checks if the entity is in daylight
++     *
++     * @return True if in daylight
++     */
++    boolean isInDaylight();
++    // Purpur end - API for any mob to burn daylight
++
++    // Purpur start - Fire Immunity API
++    /**
++     * Checks if the entity is fire immune
++     *
++     * @return True if fire immune
++     */
++    boolean isImmuneToFire();
++
++    /**
++     * Sets if the entity is fire immune
++     * Set this to null to restore the entity type default
++     */
++    void setImmuneToFire(@Nullable Boolean fireImmune);
++    // Purpur end - Fire Immunity API
+ }
+diff --git a/src/main/java/org/bukkit/entity/IronGolem.java b/src/main/java/org/bukkit/entity/IronGolem.java
+index 655e37cb3a09610a3f3df805d6dcad17d722da62..09fd716c8fc9ea34a1cbf87bcbe22df035422a51 100644
+--- a/src/main/java/org/bukkit/entity/IronGolem.java
++++ b/src/main/java/org/bukkit/entity/IronGolem.java
+@@ -19,4 +19,20 @@ public interface IronGolem extends Golem {
+      *     player created, false if you want it to be a natural village golem.
+      */
+     public void setPlayerCreated(boolean playerCreated);
++
++    // Purpur start
++    /**
++     * Get the player that summoned this iron golem
++     *
++     * @return UUID of summoner
++     */
++    @org.jetbrains.annotations.Nullable java.util.UUID getSummoner();
++
++    /**
++     * Set the player that summoned this iron golem
++     *
++     * @param summoner UUID of summoner
++     */
++    void setSummoner(@org.jetbrains.annotations.Nullable java.util.UUID summoner);
++    // Purpur end
+ }
+diff --git a/src/main/java/org/bukkit/entity/Item.java b/src/main/java/org/bukkit/entity/Item.java
+index bcc6ba95bd21c7972865838c636a03f50b6c1f1a..c3fcd8dd7dbb1e1a18e17c014c1e641149ea5960 100644
+--- a/src/main/java/org/bukkit/entity/Item.java
++++ b/src/main/java/org/bukkit/entity/Item.java
+@@ -153,4 +153,62 @@ public interface Item extends Entity, io.papermc.paper.entity.Frictional { // Pa
+      */
+     public void setHealth(int health);
+     // Paper end
++
++    // Purpur start
++    /**
++     * Set whether or not this item is immune to cactus
++     *
++     * @param immuneToCactus True to make immune to cactus
++     */
++    void setImmuneToCactus(boolean immuneToCactus);
++
++    /**
++     * Check if item is immune to cactus
++     *
++     * @return True if immune to cactus
++     */
++    boolean isImmuneToCactus();
++
++    /**
++     * Set whether or not this item is immune to explosions
++     *
++     * @param immuneToExplosion True to make immune to explosions
++     */
++    void setImmuneToExplosion(boolean immuneToExplosion);
++
++    /**
++     * Check if item is immune to explosions
++     *
++     * @return True if immune to explosions
++     */
++    boolean isImmuneToExplosion();
++
++    /**
++     * Set whether or not this item is immune to fire
++     *
++     * @param immuneToFire True to make immune to fire
++     */
++    void setImmuneToFire(boolean immuneToFire);
++
++    /**
++     * Check if item is immune to fire
++     *
++     * @return True if immune to fire
++     */
++    boolean isImmuneToFire();
++
++    /**
++     * Set whether or not this item is immune to lightning
++     *
++     * @param immuneToLightning True to make immune to lightning
++     */
++    void setImmuneToLightning(boolean immuneToLightning);
++
++    /**
++     * Check if item is immune to lightning
++     *
++     * @return True if immune to lightning
++     */
++    boolean isImmuneToLightning();
++    // Purpur end
+ }
+diff --git a/src/main/java/org/bukkit/entity/LivingEntity.java b/src/main/java/org/bukkit/entity/LivingEntity.java
+index d21a228bbec0302e75c4db5aa1db54f321143587..a4acc3578e935cd1174474bd1f6ff14db4294fe7 100644
+--- a/src/main/java/org/bukkit/entity/LivingEntity.java
++++ b/src/main/java/org/bukkit/entity/LivingEntity.java
+@@ -1468,4 +1468,20 @@ public interface LivingEntity extends Attributable, Damageable, ProjectileSource
+      */
+     boolean canUseEquipmentSlot(org.bukkit.inventory.@NotNull EquipmentSlot slot);
+     // Paper end - Expose canUseSlot
++
++    // Purpur start - API for any mob to burn daylight
++    /**
++     * If this mob will burn in the sunlight
++     *
++     * @return True if mob will burn in sunlight
++     */
++    boolean shouldBurnInDay();
++
++    /**
++     * Set if this mob should burn in the sunlight
++     *
++     * @param shouldBurnInDay True to burn in sunlight
++     */
++    void setShouldBurnInDay(boolean shouldBurnInDay);
++    // Purpur end - API for any mob to burn daylight
+ }
+diff --git a/src/main/java/org/bukkit/entity/Llama.java b/src/main/java/org/bukkit/entity/Llama.java
+index bc84b892cae5fe7019a3ad481e9da79956efa1fe..48eb5b00c460cccde29d327cef1d63fc04d6a829 100644
+--- a/src/main/java/org/bukkit/entity/Llama.java
++++ b/src/main/java/org/bukkit/entity/Llama.java
+@@ -119,4 +119,20 @@ public interface Llama extends ChestedHorse, RangedEntity { // Paper
+     @org.jetbrains.annotations.Nullable
+     Llama getCaravanTail();
+     // Paper end
++
++    // Purpur start
++    /**
++     * Check if this Llama should attempt to join a caravan
++     *
++     * @return True if Llama is allowed to join a caravan
++     */
++    boolean shouldJoinCaravan();
++
++    /**
++     * Set if this Llama should attempt to join a caravan
++     *
++     * @param shouldJoinCaravan True to allow joining a caravan
++     */
++    void setShouldJoinCaravan(boolean shouldJoinCaravan);
++    // Purpur end
+ }
+diff --git a/src/main/java/org/bukkit/entity/Player.java b/src/main/java/org/bukkit/entity/Player.java
+index 7d21ee64c9b9c14412a1eddb63fae812a91e7d9c..3fe282b8c1220d44ead8db41fd30153ff52a8be3 100644
+--- a/src/main/java/org/bukkit/entity/Player.java
++++ b/src/main/java/org/bukkit/entity/Player.java
+@@ -3892,4 +3892,123 @@ public interface Player extends HumanEntity, Conversable, OfflinePlayer, PluginM
+      */
+     void sendEntityEffect(org.bukkit.@NotNull EntityEffect effect, @NotNull Entity target);
+     // Paper end - entity effect API
++
++    // Purpur start
++    /**
++     * Allows you to get if player uses PurpurClient
++     *
++     * @return true if player uses PurpurClient
++     */
++    public boolean usesPurpurClient();
++
++    /**
++     * Check if player is AFK
++     *
++     * @return True if AFK
++     */
++    boolean isAfk();
++
++    /**
++     * Set player as AFK
++     *
++     * @param setAfk Whether to set AFK or not
++     */
++    void setAfk(boolean setAfk);
++
++    /**
++     * Reset the idle timer back to 0
++     * @deprecated Use {@link #resetIdleDuration()} instead
++     */
++    void resetIdleTimer();
++
++    /**
++     * Creates debug block highlight on specified block location and show it to this player.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration);
++
++    /**
++     * Creates debug block highlight on specified block location and show it to this player.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param argb Color of the highlight. ARGB int. Will be ignored on some versions of vanilla client
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration, int argb);
++
++    /**
++     * Creates debug block highlight on specified block location and show it to this player.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param text Text to show above the highlight
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration, @NotNull String text);
++
++    /**
++     * Creates debug block highlight on specified block location and show it to this player.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param text Text to show above the highlight
++     * @param argb Color of the highlight. ARGB int. Will be ignored on some versions of vanilla client
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration, @NotNull String text, int argb);
++
++    /**
++     * Creates debug block highlight on specified block location and show it to this player.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param color Color of the highlight. Will be ignored on some versions of vanilla client
++     * @param transparency Transparency of the highlight
++     * @throws IllegalArgumentException If transparency is outside 0-255 range
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration, @NotNull org.bukkit.Color color, int transparency);
++
++    /**
++     * Creates debug block highlight on specified block location and show it to this player.
++     * <p>
++     * Clients may be inconsistent in displaying it.
++     * @param location Location to highlight
++     * @param duration Duration for highlight to show in milliseconds
++     * @param text Text to show above the highlight
++     * @param color Color of the highlight. Will be ignored on some versions of vanilla client
++     * @param transparency Transparency of the highlight
++     * @throws IllegalArgumentException If transparency is outside 0-255 range
++     */
++    void sendBlockHighlight(@NotNull Location location, int duration, @NotNull String text, @NotNull org.bukkit.Color color, int transparency);
++
++    /**
++     * Clears all debug block highlights
++     */
++    void clearBlockHighlights();
++
++    /**
++     * Sends a player the death screen with a specified death message.
++     *
++     * @param message The death message to show the player
++     */
++    void sendDeathScreen(@NotNull net.kyori.adventure.text.Component message);
++
++    /**
++     * Sends a player the death screen with a specified death message,
++     * along with the entity that caused the death.
++     *
++     * @param message The death message to show the player
++     * @param killer The entity that killed the player
++     * @deprecated Use {@link #sendDeathScreen(net.kyori.adventure.text.Component)} instead, as 1.20 removed the killer ID from the packet.
++     */
++    @Deprecated(since = "1.20")
++    default void sendDeathScreen(@NotNull net.kyori.adventure.text.Component message, @Nullable Entity killer) {
++        sendDeathScreen(message);
++    }
++    // Purpur end
+ }
+diff --git a/src/main/java/org/bukkit/entity/Snowman.java b/src/main/java/org/bukkit/entity/Snowman.java
+index 7fbfdb07585c7b28acea1f0c1f58ada0cc744441..21fcca092e2e31baa5ece0de9e44e3fade8c7123 100644
+--- a/src/main/java/org/bukkit/entity/Snowman.java
++++ b/src/main/java/org/bukkit/entity/Snowman.java
+@@ -23,4 +23,20 @@ public interface Snowman extends Golem, RangedEntity, io.papermc.paper.entity.Sh
+      * @param derpMode True to remove the pumpkin, false to add a pumpkin
+      */
+     void setDerp(boolean derpMode);
++
++    // Purpur start
++    /**
++     * Get the player that summoned this snowman
++     *
++     * @return UUID of summoner
++     */
++    @org.jetbrains.annotations.Nullable java.util.UUID getSummoner();
++
++    /**
++     * Set the player that summoned this snowman
++     *
++     * @param summoner UUID of summoner
++     */
++    void setSummoner(@org.jetbrains.annotations.Nullable java.util.UUID summoner);
++    // Purpur end
+ }
+diff --git a/src/main/java/org/bukkit/entity/Villager.java b/src/main/java/org/bukkit/entity/Villager.java
+index 1db3742024e9cd1b70af2d52b4b756a544c019df..9c722a762c88a88bb5ef18c3b9eab8b371360dac 100644
+--- a/src/main/java/org/bukkit/entity/Villager.java
++++ b/src/main/java/org/bukkit/entity/Villager.java
+@@ -367,4 +367,14 @@ public interface Villager extends AbstractVillager {
+      */
+     public void clearReputations();
+     // Paper end
++
++    // Purpur start
++
++    /**
++     * Check if villager is currently lobotomized
++     *
++     * @return True if lobotomized
++     */
++    boolean isLobotomized();
++    // Purpur end
+ }
+diff --git a/src/main/java/org/bukkit/entity/Wither.java b/src/main/java/org/bukkit/entity/Wither.java
+index 14543c2238b45c526dd9aebea2aa5c22f5df54dc..5312daf33405704c74e2c9e109754285ea6cf734 100644
+--- a/src/main/java/org/bukkit/entity/Wither.java
++++ b/src/main/java/org/bukkit/entity/Wither.java
+@@ -107,4 +107,20 @@ public interface Wither extends Monster, Boss, com.destroystokyo.paper.entity.Ra
+      */
+     void enterInvulnerabilityPhase();
+     // Paper end
++
++    // Purpur start
++    /**
++     * Get the player that summoned this wither
++     *
++     * @return UUID of summoner
++     */
++    @org.jetbrains.annotations.Nullable java.util.UUID getSummoner();
++
++    /**
++     * Set the player that summoned this wither
++     *
++     * @param summoner UUID of summoner
++     */
++    void setSummoner(@org.jetbrains.annotations.Nullable java.util.UUID summoner);
++    // Purpur end
+ }
+diff --git a/src/main/java/org/bukkit/entity/Wolf.java b/src/main/java/org/bukkit/entity/Wolf.java
+index 346fdddd2ed8f0b8b66860c969f5e80c51c6d622..6f62277c3461d436a656cbd80bc59e70cb1a6f3a 100644
+--- a/src/main/java/org/bukkit/entity/Wolf.java
++++ b/src/main/java/org/bukkit/entity/Wolf.java
+@@ -110,4 +110,20 @@ public interface Wolf extends Tameable, Sittable, io.papermc.paper.entity.Collar
+             return RegistryAccess.registryAccess().getRegistry(RegistryKey.WOLF_VARIANT).getOrThrow(NamespacedKey.minecraft(key));
+         }
+     }
++
++    // Purpur start
++    /**
++     * Checks if this wolf is rabid
++     *
++     * @return whether the wolf is rabid
++     */
++    public boolean isRabid();
++
++    /**
++     * Sets this wolf to be rabid or not
++     *
++     * @param rabid whether the wolf should be rabid
++     */
++    public void setRabid(boolean rabid);
++    // Purpur end
+ }
+diff --git a/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java b/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java
+index d1a5424ff3b289f1c82449ef6d88eb52665df41b..f23b0c250f88926c147af0314b5c4d23c5f8dbae 100644
+--- a/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java
++++ b/src/main/java/org/bukkit/event/entity/EntityDamageEvent.java
+@@ -308,7 +308,8 @@ public class EntityDamageEvent extends EntityEvent implements Cancellable {
+         WORLD_BORDER,
+         /**
+          * Damage caused when an entity contacts a block such as a Cactus,
+-         * Dripstone (Stalagmite) or Berry Bush.
++         * Dripstone (Stalagmite) or Berry Bush. (Stonecutters too if you
++         * have the Stonecutter damage Purpur feature enabled)
+          * <p>
+          * Damage: variable
+          */
+diff --git a/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java b/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java
+index 8fdfcbc7d20fe0af6b220ab94516247093637621..f6a8928408e11a5ae723366e4ea1280dfcc6111e 100644
+--- a/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java
++++ b/src/main/java/org/bukkit/event/entity/EntityPotionEffectEvent.java
+@@ -216,6 +216,12 @@ public class EntityPotionEffectEvent extends EntityEvent implements Cancellable
+          * When all effects are removed due to a bucket of milk.
+          */
+         MILK,
++        // Purpur start
++        /**
++         * When a player wears full netherite armor
++         */
++        NETHERITE_ARMOR,
++        // Purpur end
+         /**
+          * When a player gets bad omen after killing a patrol captain.
+          *
+diff --git a/src/main/java/org/bukkit/event/inventory/InventoryType.java b/src/main/java/org/bukkit/event/inventory/InventoryType.java
+index 81118a91c2e22e02a1f774d1cc4d3e97064087ce..6640df827e354cc32cea5fc71b9e464443202708 100644
+--- a/src/main/java/org/bukkit/event/inventory/InventoryType.java
++++ b/src/main/java/org/bukkit/event/inventory/InventoryType.java
+@@ -164,7 +164,7 @@ public enum InventoryType {
+     SMITHING_NEW(4, "Upgrade Gear", MenuType.SMITHING),
+     ;
+ 
+-    private final int size;
++    private int size; @ApiStatus.Internal public void setDefaultSize(int size) { this.size = size; } // Purpur - remove final and add setter
+     private final String title;
+     private final MenuType menuType;
+     private final boolean isCreatable;
+diff --git a/src/main/java/org/bukkit/inventory/AnvilInventory.java b/src/main/java/org/bukkit/inventory/AnvilInventory.java
+index f1f97a85ec713c05c882d7588f4a3e4a017f4795..813f6cd253322538bdf96eb323dd23a7809a1c1e 100644
+--- a/src/main/java/org/bukkit/inventory/AnvilInventory.java
++++ b/src/main/java/org/bukkit/inventory/AnvilInventory.java
+@@ -138,4 +138,42 @@ public interface AnvilInventory extends Inventory {
+         setItem(2, result);
+     }
+     // Paper end
++
++    // Purpur start
++    /**
++     * Gets if the player viewing the anvil inventory can bypass experience cost
++     *
++     * @return whether the player viewing the anvil inventory can bypass the experience cost
++     * @deprecated use {@link AnvilView#canBypassCost()}.
++     */
++    @Deprecated(forRemoval = true, since = "1.21")
++    boolean canBypassCost();
++
++    /**
++     * Set if the player viewing the anvil inventory can bypass the experience cost
++     *
++     * @param bypassCost whether the player viewing the anvil inventory can bypass the experience cost
++     * @deprecated use {@link AnvilView#setBypassCost(boolean)}.
++     */
++    @Deprecated(forRemoval = true, since = "1.21")
++    void setBypassCost(boolean bypassCost);
++
++    /**
++     * Gets if the player viewing the anvil inventory can do unsafe enchants
++     *
++     * @return whether the player viewing the anvil inventory can do unsafe enchants
++     * @deprecated use {@link AnvilView#canDoUnsafeEnchants()}.
++     */
++    @Deprecated(forRemoval = true, since = "1.21")
++    boolean canDoUnsafeEnchants();
++
++    /**
++     * Set if the player viewing the anvil inventory can do unsafe enchants
++     *
++     * @param canDoUnsafeEnchants whether the player viewing the anvil inventory can do unsafe enchants
++     * @deprecated use {@link AnvilView#setDoUnsafeEnchants(boolean)}.
++     */
++    @Deprecated(forRemoval = true, since = "1.21")
++    void setDoUnsafeEnchants(boolean canDoUnsafeEnchants);
++    // Purpur end
+ }
+diff --git a/src/main/java/org/bukkit/inventory/ItemStack.java b/src/main/java/org/bukkit/inventory/ItemStack.java
+index 55457c7539c08e861263333ae40cbfe9d25814f4..9b3c3d6563c94aec225a332db5d5653887ac5f4b 100644
+--- a/src/main/java/org/bukkit/inventory/ItemStack.java
++++ b/src/main/java/org/bukkit/inventory/ItemStack.java
+@@ -21,6 +21,13 @@ import org.bukkit.inventory.meta.ItemMeta;
+ import org.bukkit.material.MaterialData;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
++// Purpur start - ItemStack convenience methods
++import com.google.common.collect.Multimap;
++import java.util.Collection;
++import org.bukkit.attribute.Attribute;
++import org.bukkit.attribute.AttributeModifier;
++import org.bukkit.block.data.BlockData;
++// Purpur end - ItemStack convenience methods
+ 
+ /**
+  * Represents a stack of items.
+@@ -1329,4 +1336,482 @@ public class ItemStack implements Cloneable, ConfigurationSerializable, Translat
+         return this.craftDelegate.matchesWithoutData(item, excludeTypes, ignoreCount);
+     }
+     // Paper end - data component API
++
++    // Purpur start - ItemStack convenience methods
++    /**
++     * Gets the display name that is set.
++     * <p>
++     * Plugins should check that hasDisplayName() returns <code>true</code>
++     * before calling this method.
++     *
++     * @return the display name that is set
++     */
++    @NotNull
++    public String getDisplayName() {
++        return this.craftDelegate.getDisplayName();
++    }
++
++    /**
++     * Sets the display name.
++     *
++     * @param name the name to set
++     */
++    public void setDisplayName(@Nullable String name) {
++        this.craftDelegate.setDisplayName(name);
++    }
++
++    /**
++     * Checks for existence of a display name.
++     *
++     * @return true if this has a display name
++     */
++    public boolean hasDisplayName() {
++        return this.craftDelegate.hasDisplayName();
++    }
++
++    /**
++     * Gets the localized display name that is set.
++     * <p>
++     * Plugins should check that hasLocalizedName() returns <code>true</code>
++     * before calling this method.
++     *
++     * @return the localized name that is set
++     */
++    @NotNull
++    public String getLocalizedName() {
++        return this.craftDelegate.getLocalizedName();
++    }
++
++    /**
++     * Sets the localized name.
++     *
++     * @param name the name to set
++     */
++    public void setLocalizedName(@Nullable String name) {
++        this.craftDelegate.setLocalizedName(name);
++    }
++
++    /**
++     * Checks for existence of a localized name.
++     *
++     * @return true if this has a localized name
++     */
++    public boolean hasLocalizedName() {
++        return this.craftDelegate.hasLocalizedName();
++    }
++
++    /**
++     * Checks for existence of lore.
++     *
++     * @return true if this has lore
++     */
++    public boolean hasLore() {
++        return this.craftDelegate.hasLore();
++    }
++
++    /**
++     * Checks for existence of the specified enchantment.
++     *
++     * @param ench enchantment to check
++     * @return true if this enchantment exists for this meta
++     */
++    public boolean hasEnchant(@NotNull Enchantment ench) {
++        return this.craftDelegate.hasEnchant(ench);
++    }
++
++    /**
++     * Checks for the level of the specified enchantment.
++     *
++     * @param ench enchantment to check
++     * @return The level that the specified enchantment has, or 0 if none
++     */
++    public int getEnchantLevel(@NotNull Enchantment ench) {
++        return this.craftDelegate.getEnchantLevel(ench);
++    }
++
++    /**
++     * Returns a copy the enchantments in this ItemMeta. <br>
++     * Returns an empty map if none.
++     *
++     * @return An immutable copy of the enchantments
++     */
++    @NotNull
++    public Map<Enchantment, Integer> getEnchants() {
++        return this.craftDelegate.getEnchants();
++    }
++
++    /**
++     * Adds the specified enchantment to this item meta.
++     *
++     * @param ench Enchantment to add
++     * @param level Level for the enchantment
++     * @param ignoreLevelRestriction this indicates the enchantment should be
++     *     applied, ignoring the level limit
++     * @return true if the item meta changed as a result of this call, false
++     *     otherwise
++     */
++    public boolean addEnchant(@NotNull Enchantment ench, int level, boolean ignoreLevelRestriction) {
++        return this.craftDelegate.addEnchant(ench, level, ignoreLevelRestriction);
++    }
++
++    /**
++     * Removes the specified enchantment from this item meta.
++     *
++     * @param ench Enchantment to remove
++     * @return true if the item meta changed as a result of this call, false
++     *     otherwise
++     */
++    public boolean removeEnchant(@NotNull Enchantment ench) {
++        return this.craftDelegate.removeEnchant(ench);
++    }
++
++    /**
++     * Checks for the existence of any enchantments.
++     *
++     * @return true if an enchantment exists on this meta
++     */
++    public boolean hasEnchants() {
++        return this.craftDelegate.hasEnchants();
++    }
++
++    /**
++     * Checks if the specified enchantment conflicts with any enchantments in
++     * this ItemMeta.
++     *
++     * @param ench enchantment to test
++     * @return true if the enchantment conflicts, false otherwise
++     */
++    public boolean hasConflictingEnchant(@NotNull Enchantment ench) {
++        return this.craftDelegate.hasConflictingEnchant(ench);
++    }
++
++    /**
++     * Sets the custom model data.
++     * <p>
++     * CustomModelData is an integer that may be associated client side with a
++     * custom item model.
++     *
++     * @param data the data to set, or null to clear
++     */
++    public void setCustomModelData(@Nullable Integer data) {
++        this.craftDelegate.setCustomModelData(data);
++    }
++
++    /**
++     * Gets the custom model data that is set.
++     * <p>
++     * CustomModelData is an integer that may be associated client side with a
++     * custom item model.
++     * <p>
++     * Plugins should check that hasCustomModelData() returns <code>true</code>
++     * before calling this method.
++     *
++     * @return the localized name that is set
++     */
++    public int getCustomModelData() {
++        return this.craftDelegate.getCustomModelData();
++    }
++
++    /**
++     * Checks for existence of custom model data.
++     * <p>
++     * CustomModelData is an integer that may be associated client side with a
++     * custom item model.
++     *
++     * @return true if this has custom model data
++     */
++    public boolean hasCustomModelData() {
++        return this.craftDelegate.hasCustomModelData();
++    }
++
++    /**
++     * Returns whether the item has block data currently attached to it.
++     *
++     * @return whether block data is already attached
++     */
++    public boolean hasBlockData() {
++        return this.craftDelegate.hasBlockData();
++    }
++
++    /**
++     * Returns the currently attached block data for this item or creates a new
++     * one if one doesn't exist.
++     *
++     * The state is a copy, it must be set back (or to another item) with
++     * {@link #setBlockData(BlockData)}
++     *
++     * @param material the material we wish to get this data in the context of
++     * @return the attached data or new data
++     */
++    @NotNull
++    public BlockData getBlockData(@NotNull Material material) {
++        return this.craftDelegate.getBlockData(material);
++    }
++
++    /**
++     * Attaches a copy of the passed block data to the item.
++     *
++     * @param blockData the block data to attach to the block.
++     * @throws IllegalArgumentException if the blockData is null or invalid for
++     * this item.
++     */
++    public void setBlockData(@NotNull BlockData blockData) {
++        this.craftDelegate.setBlockData(blockData);
++    }
++
++    /**
++     * Gets the repair penalty
++     *
++     * @return the repair penalty
++     */
++    public int getRepairCost() {
++        return this.craftDelegate.getRepairCost();
++    }
++
++    /**
++     * Sets the repair penalty
++     *
++     * @param cost repair penalty
++     */
++    public void setRepairCost(int cost) {
++        this.craftDelegate.setRepairCost(cost);
++    }
++
++    /**
++     * Checks to see if this has a repair penalty
++     *
++     * @return true if this has a repair penalty
++     */
++    public boolean hasRepairCost() {
++        return this.craftDelegate.hasRepairCost();
++    }
++
++    /**
++     * Return if the unbreakable tag is true. An unbreakable item will not lose
++     * durability.
++     *
++     * @return true if the unbreakable tag is true
++     */
++    public boolean isUnbreakable() {
++        return this.craftDelegate.isUnbreakable();
++    }
++
++    /**
++     * Sets the unbreakable tag. An unbreakable item will not lose durability.
++     *
++     * @param unbreakable true if set unbreakable
++     */
++    public void setUnbreakable(boolean unbreakable) {
++        this.craftDelegate.setUnbreakable(unbreakable);
++    }
++
++    /**
++     * Checks for the existence of any AttributeModifiers.
++     *
++     * @return true if any AttributeModifiers exist
++     */
++    public boolean hasAttributeModifiers() {
++        return this.craftDelegate.hasAttributeModifiers();
++    }
++
++    /**
++     * Return an immutable copy of all Attributes and
++     * their modifiers in this ItemMeta.<br>
++     * Returns null if none exist.
++     *
++     * @return an immutable {@link Multimap} of Attributes
++     *         and their AttributeModifiers, or null if none exist
++     */
++    @Nullable
++    public Multimap<Attribute, AttributeModifier> getAttributeModifiers() {
++        return this.craftDelegate.getAttributeModifiers();
++    }
++
++    /**
++     * Return an immutable copy of all {@link Attribute}s and their
++     * {@link AttributeModifier}s for a given {@link EquipmentSlot}.<br>
++     * Any {@link AttributeModifier} that does have have a given
++     * {@link EquipmentSlot} will be returned. This is because
++     * AttributeModifiers without a slot are active in any slot.<br>
++     * If there are no attributes set for the given slot, an empty map
++     * will be returned.
++     *
++     * @param slot the {@link EquipmentSlot} to check
++     * @return the immutable {@link Multimap} with the
++     *         respective Attributes and modifiers, or an empty map
++     *         if no attributes are set.
++     */
++    @NotNull
++    public Multimap<Attribute, AttributeModifier> getAttributeModifiers(@Nullable EquipmentSlot slot) {
++        return this.craftDelegate.getAttributeModifiers(slot);
++    }
++
++    /**
++     * Return an immutable copy of all {@link AttributeModifier}s
++     * for a given {@link Attribute}
++     *
++     * @param attribute the {@link Attribute}
++     * @return an immutable collection of {@link AttributeModifier}s
++     *          or null if no AttributeModifiers exist for the Attribute.
++     * @throws NullPointerException if Attribute is null
++     */
++    @Nullable
++    public Collection<AttributeModifier> getAttributeModifiers(@NotNull Attribute attribute) {
++        return this.craftDelegate.getAttributeModifiers(attribute);
++    }
++
++    /**
++     * Add an Attribute and it's Modifier.
++     * AttributeModifiers can now support {@link EquipmentSlot}s.
++     * If not set, the {@link AttributeModifier} will be active in ALL slots.
++     * <br>
++     * Two {@link AttributeModifier}s that have the same {@link java.util.UUID}
++     * cannot exist on the same Attribute.
++     *
++     * @param attribute the {@link Attribute} to modify
++     * @param modifier the {@link AttributeModifier} specifying the modification
++     * @return true if the Attribute and AttributeModifier were
++     *         successfully added
++     * @throws NullPointerException if Attribute is null
++     * @throws NullPointerException if AttributeModifier is null
++     * @throws IllegalArgumentException if AttributeModifier already exists
++     */
++    public boolean addAttributeModifier(@NotNull Attribute attribute, @NotNull AttributeModifier modifier) {
++        return this.craftDelegate.addAttributeModifier(attribute, modifier);
++    }
++
++    /**
++     * Set all {@link Attribute}s and their {@link AttributeModifier}s.
++     * To clear all currently set Attributes and AttributeModifiers use
++     * null or an empty Multimap.
++     * If not null nor empty, this will filter all entries that are not-null
++     * and add them to the ItemStack.
++     *
++     * @param attributeModifiers the new Multimap containing the Attributes
++     *                           and their AttributeModifiers
++     */
++    public void setAttributeModifiers(@Nullable Multimap<Attribute, AttributeModifier> attributeModifiers) {
++        this.craftDelegate.setAttributeModifiers(attributeModifiers);
++    }
++
++    /**
++     * Remove all {@link AttributeModifier}s associated with the given
++     * {@link Attribute}.
++     * This will return false if nothing was removed.
++     *
++     * @param attribute attribute to remove
++     * @return  true if all modifiers were removed from a given
++     *                  Attribute. Returns false if no attributes were
++     *                  removed.
++     * @throws NullPointerException if Attribute is null
++     */
++    public boolean removeAttributeModifier(@NotNull Attribute attribute) {
++        return this.craftDelegate.removeAttributeModifier(attribute);
++    }
++
++    /**
++     * Remove all {@link Attribute}s and {@link AttributeModifier}s for a
++     * given {@link EquipmentSlot}.<br>
++     * If the given {@link EquipmentSlot} is null, this will remove all
++     * {@link AttributeModifier}s that do not have an EquipmentSlot set.
++     *
++     * @param slot the {@link EquipmentSlot} to clear all Attributes and
++     *             their modifiers for
++     * @return true if all modifiers were removed that match the given
++     *         EquipmentSlot.
++     */
++    public boolean removeAttributeModifier(@Nullable EquipmentSlot slot) {
++        return this.craftDelegate.removeAttributeModifier(slot);
++    }
++
++    /**
++     * Remove a specific {@link Attribute} and {@link AttributeModifier}.
++     * AttributeModifiers are matched according to their {@link java.util.UUID}.
++     *
++     * @param attribute the {@link Attribute} to remove
++     * @param modifier the {@link AttributeModifier} to remove
++     * @return if any attribute modifiers were remove
++     *
++     * @throws NullPointerException if the Attribute is null
++     * @throws NullPointerException if the AttributeModifier is null
++     *
++     * @see AttributeModifier#getUniqueId()
++     */
++    public boolean removeAttributeModifier(@NotNull Attribute attribute, @NotNull AttributeModifier modifier) {
++        return this.craftDelegate.removeAttributeModifier(attribute, modifier);
++    }
++
++    /**
++     * Checks to see if this item has damage
++     *
++     * @return true if this has damage
++     */
++    public boolean hasDamage() {
++        return this.craftDelegate.hasDamage();
++    }
++
++    /**
++     * Gets the damage
++     *
++     * @return the damage
++     */
++    public int getDamage() {
++        return this.craftDelegate.getDamage();
++    }
++
++    /**
++     * Sets the damage
++     *
++     * @param damage item damage
++     */
++    public void setDamage(int damage) {
++        this.craftDelegate.setDamage(damage);
++    }
++
++    /**
++     * Repairs this item by 1 durability
++     */
++    public void repair() {
++        repair(1);
++    }
++
++    /**
++     * Damages this item by 1 durability
++     *
++     * @return True if damage broke the item
++     */
++    public boolean damage() {
++        return damage(1);
++    }
++
++    /**
++     * Repairs this item's durability by amount
++     *
++     * @param amount Amount of durability to repair
++     */
++    public void repair(int amount) {
++        damage(-amount);
++    }
++
++    /**
++     * Damages this item's durability by amount
++     *
++     * @param amount Amount of durability to damage
++     * @return True if damage broke the item
++     */
++    public boolean damage(int amount) {
++        return damage(amount, false);
++    }
++
++    /**
++     * Damages this item's durability by amount
++     *
++     * @param amount Amount of durability to damage
++     * @param ignoreUnbreaking Ignores unbreaking enchantment
++     * @return True if damage broke the item
++     */
++    public boolean damage(int amount, boolean ignoreUnbreaking) {
++        return this.craftDelegate.damage(amount, ignoreUnbreaking);
++    }
++    // Purpur end - ItemStack convenience methods
+ }
+diff --git a/src/main/java/org/bukkit/inventory/RecipeChoice.java b/src/main/java/org/bukkit/inventory/RecipeChoice.java
+index 922bb69b5f218e489a6dd5e0f207743c1f1d3d35..3606c6457a98e0e39d6a4b171bc11b61aac73e5c 100644
+--- a/src/main/java/org/bukkit/inventory/RecipeChoice.java
++++ b/src/main/java/org/bukkit/inventory/RecipeChoice.java
+@@ -191,6 +191,7 @@ public interface RecipeChoice extends Predicate<ItemStack>, Cloneable {
+     public static class ExactChoice implements RecipeChoice {
+ 
+         private List<ItemStack> choices;
++        private Predicate<ItemStack> predicate; // Purpur - Add predicate to recipe's ExactChoice ingredient
+ 
+         public ExactChoice(@NotNull ItemStack stack) {
+             this(Arrays.asList(stack));
+@@ -241,6 +242,7 @@ public interface RecipeChoice extends Predicate<ItemStack>, Cloneable {
+ 
+         @Override
+         public boolean test(@NotNull ItemStack t) {
++            if (predicate != null) return predicate.test(t); // Purpur - Add predicate to recipe's ExactChoice ingredient
+             for (ItemStack match : choices) {
+                 if (t.isSimilar(match)) {
+                     return true;
+@@ -250,6 +252,17 @@ public interface RecipeChoice extends Predicate<ItemStack>, Cloneable {
+             return false;
+         }
+ 
++        // Purpur start - Add predicate to recipe's ExactChoice ingredient
++        @org.jetbrains.annotations.Nullable
++        public Predicate<ItemStack> getPredicate() {
++            return predicate;
++        }
++
++        public void setPredicate(@org.jetbrains.annotations.Nullable Predicate<ItemStack> predicate) {
++            this.predicate = predicate;
++        }
++        // Purpur end - Add predicate to recipe's ExactChoice ingredient
++
+         @Override
+         public int hashCode() {
+             int hash = 7;
+diff --git a/src/main/java/org/bukkit/inventory/view/AnvilView.java b/src/main/java/org/bukkit/inventory/view/AnvilView.java
+index 3c1aa1e036bee08304c1cdca59f6a5bc0ba306c0..b273e168c976fb6e185da3ba83d9d69e0b2e7920 100644
+--- a/src/main/java/org/bukkit/inventory/view/AnvilView.java
++++ b/src/main/java/org/bukkit/inventory/view/AnvilView.java
+@@ -89,4 +89,34 @@ public interface AnvilView extends InventoryView {
+      */
+     void bypassEnchantmentLevelRestriction(boolean bypassEnchantmentLevelRestriction);
+     // Paper end - bypass anvil level restrictions
++
++    // Purpur start - Anvil API
++    /**
++     * Gets if the player viewing the anvil inventory can bypass experience cost
++     *
++     * @return whether the player viewing the anvil inventory can bypass the experience cost
++     */
++    boolean canBypassCost();
++
++    /**
++     * Set if the player viewing the anvil inventory can bypass the experience cost
++     *
++     * @param bypassCost whether the player viewing the anvil inventory can bypass the experience cost
++     */
++    void setBypassCost(boolean bypassCost);
++
++    /**
++     * Gets if the player viewing the anvil inventory can do unsafe enchants
++     *
++     * @return whether the player viewing the anvil inventory can do unsafe enchants
++     */
++    boolean canDoUnsafeEnchants();
++
++    /**
++     * Set if the player viewing the anvil inventory can do unsafe enchants
++     *
++     * @param canDoUnsafeEnchants whether the player viewing the anvil inventory can do unsafe enchants
++     */
++    void setDoUnsafeEnchants(boolean canDoUnsafeEnchants);
++    // Purpur end - Anvil API
+ }
+diff --git a/src/main/java/org/bukkit/map/MapRenderer.java b/src/main/java/org/bukkit/map/MapRenderer.java
+index cb7040876a99a5a7e49b81684ef0f3b79584c376..63351a0fb4263e2e7ccb6896768a5b10378de297 100644
+--- a/src/main/java/org/bukkit/map/MapRenderer.java
++++ b/src/main/java/org/bukkit/map/MapRenderer.java
+@@ -54,4 +54,12 @@ public abstract class MapRenderer {
+      */
+     public abstract void render(@NotNull MapView map, @NotNull MapCanvas canvas, @NotNull Player player);
+ 
++    // Purpur - start - Explorer Map API
++    /**
++     * Check if this is an explorer (aka treasure) map.
++     *
++     * @return True if explorer map
++     */
++    public abstract boolean isExplorerMap();
++    // Purpur - end - Explorer Map API
+ }
+diff --git a/src/main/java/org/bukkit/permissions/PermissibleBase.java b/src/main/java/org/bukkit/permissions/PermissibleBase.java
+index 75b77cc4fe189b4b6baa1af3663dc492e992a266..1aa3c6dbf2f2a62fbec990f931d5c5d5c8e5a0bd 100644
+--- a/src/main/java/org/bukkit/permissions/PermissibleBase.java
++++ b/src/main/java/org/bukkit/permissions/PermissibleBase.java
+@@ -169,7 +169,7 @@ public class PermissibleBase implements Permissible {
+ 
+         for (Permission perm : defaults) {
+             String name = perm.getName().toLowerCase(Locale.ROOT);
+-            permissions.put(name, new PermissionAttachmentInfo(parent, name, null, true));
++            permissions.put(name, new PermissionAttachmentInfo(parent, name, null, perm.getDefault().getValue(isOp()))); // Purpur - Fix default permission system
+             Bukkit.getServer().getPluginManager().subscribeToPermission(name, parent);
+             calculateChildPermissions(perm.getChildren(), false, null);
+         }
+@@ -197,7 +197,7 @@ public class PermissibleBase implements Permissible {
+             String name = entry.getKey();
+ 
+             Permission perm = Bukkit.getServer().getPluginManager().getPermission(name);
+-            boolean value = entry.getValue() ^ invert;
++            boolean value = (entry.getValue() == null && perm != null ? perm.getDefault().getValue(isOp()) : entry.getValue()) ^ invert; // Purpur - Fix default permission system
+             String lname = name.toLowerCase(Locale.ROOT);
+ 
+             permissions.put(lname, new PermissionAttachmentInfo(parent, lname, attachment, value));
+diff --git a/src/main/java/org/bukkit/plugin/java/JavaPluginLoader.java b/src/main/java/org/bukkit/plugin/java/JavaPluginLoader.java
+index b412aaf08901d169ac9fc89b36f9d6ccb95c53d3..065f182fbfe4541d602f57d548f286ee3c2fab19 100644
+--- a/src/main/java/org/bukkit/plugin/java/JavaPluginLoader.java
++++ b/src/main/java/org/bukkit/plugin/java/JavaPluginLoader.java
+@@ -55,6 +55,7 @@ public final class JavaPluginLoader implements PluginLoader {
+     private final Pattern[] fileFilters = new Pattern[]{Pattern.compile("\\.jar$")};
+     private final List<PluginClassLoader> loaders = new CopyOnWriteArrayList<PluginClassLoader>();
+     private final LibraryLoader libraryLoader;
++    public static boolean SuppressLibraryLoaderLogger = false; // Purpur - Add log suppression for LibraryLoader
+ 
+     /**
+      * This class was not meant to be constructed explicitly
+diff --git a/src/main/java/org/bukkit/plugin/java/LibraryLoader.java b/src/main/java/org/bukkit/plugin/java/LibraryLoader.java
+index c66252802c51174bc26f266cb5cdecdd856ff220..7988e0d7917b0124b0c056bc832cc3864017881d 100644
+--- a/src/main/java/org/bukkit/plugin/java/LibraryLoader.java
++++ b/src/main/java/org/bukkit/plugin/java/LibraryLoader.java
+@@ -68,6 +68,7 @@ public class LibraryLoader
+             @Override
+             public void transferStarted(@NotNull TransferEvent event) throws TransferCancelledException
+             {
++                if (!JavaPluginLoader.SuppressLibraryLoaderLogger) // Purpur - Add log suppression for LibraryLoader
+                 logger.log( Level.INFO, "Downloading {0}", event.getResource().getRepositoryUrl() + event.getResource().getResourceName() );
+             }
+         } );
+@@ -94,6 +95,7 @@ public class LibraryLoader
+         {
+             return null;
+         }
++        if (!JavaPluginLoader.SuppressLibraryLoaderLogger) // Purpur - Add log suppression for LibraryLoader
+         logger.log( Level.INFO, "[{0}] Loading {1} libraries... please wait", new Object[]
+         {
+             java.util.Objects.requireNonNullElseGet(desc.getPrefix(), desc::getName), desc.getLibraries().size() // Paper - use configured log prefix
+@@ -144,6 +146,7 @@ public class LibraryLoader
+             }
+ 
+             jarFiles.add( url );
++            if (!JavaPluginLoader.SuppressLibraryLoaderLogger) // Purpur - Add log suppression for LibraryLoader
+             logger.log( Level.INFO, "[{0}] Loaded library {1}", new Object[]
+             {
+                 java.util.Objects.requireNonNullElseGet(desc.getPrefix(), desc::getName), file // Paper - use configured log prefix
+diff --git a/src/main/java/org/bukkit/util/permissions/CommandPermissions.java b/src/main/java/org/bukkit/util/permissions/CommandPermissions.java
+index 7763d6101ac61900db1e2310966b99584539fd0e..48c67cb3a7073db85d7cf2308e5b1aae89b7a1d2 100644
+--- a/src/main/java/org/bukkit/util/permissions/CommandPermissions.java
++++ b/src/main/java/org/bukkit/util/permissions/CommandPermissions.java
+@@ -18,6 +18,7 @@ public final class CommandPermissions {
+         DefaultPermissions.registerPermission(PREFIX + "plugins", "Allows the user to view the list of plugins running on this server", PermissionDefault.TRUE, commands);
+         DefaultPermissions.registerPermission(PREFIX + "reload", "Allows the user to reload the server settings", PermissionDefault.OP, commands);
+         DefaultPermissions.registerPermission(PREFIX + "version", "Allows the user to view the version of the server", PermissionDefault.TRUE, commands);
++        DefaultPermissions.registerPermission(PREFIX + "purpur", "Allows the user to use the purpur command", PermissionDefault.OP, commands); // Purpur - Default permissions
+ 
+         commands.recalculatePermissibles();
+         return commands;
+diff --git a/src/main/java/org/bukkit/util/permissions/DefaultPermissions.java b/src/main/java/org/bukkit/util/permissions/DefaultPermissions.java
+index e1a4ddf2c07cdd242fa8054a0152522fe4039e85..5329de48a739cafac98514e24edaf5f1b9d41fff 100644
+--- a/src/main/java/org/bukkit/util/permissions/DefaultPermissions.java
++++ b/src/main/java/org/bukkit/util/permissions/DefaultPermissions.java
+@@ -31,7 +31,7 @@ public final class DefaultPermissions {
+ 
+         if (withLegacy) {
+             Permission legacy = new Permission(LEGACY_PREFIX + result.getName(), result.getDescription(), PermissionDefault.FALSE);
+-            legacy.getChildren().put(result.getName(), true);
++            legacy.getChildren().put(result.getName(), null); // Purpur - Fix default permission system
+             registerPermission(perm, false);
+         }
+ 
+@@ -40,7 +40,7 @@ public final class DefaultPermissions {
+ 
+     @NotNull
+     public static Permission registerPermission(@NotNull Permission perm, @NotNull Permission parent) {
+-        parent.getChildren().put(perm.getName(), true);
++        parent.getChildren().put(perm.getName(), null); // Purpur - Fix default permission system
+         return registerPermission(perm);
+     }
+ 
+@@ -53,7 +53,7 @@ public final class DefaultPermissions {
+     @NotNull
+     public static Permission registerPermission(@NotNull String name, @Nullable String desc, @NotNull Permission parent) {
+         Permission perm = registerPermission(name, desc);
+-        parent.getChildren().put(perm.getName(), true);
++        parent.getChildren().put(perm.getName(), null); // Purpur - Fix default permission system
+         return perm;
+     }
+ 
+@@ -66,7 +66,7 @@ public final class DefaultPermissions {
+     @NotNull
+     public static Permission registerPermission(@NotNull String name, @Nullable String desc, @Nullable PermissionDefault def, @NotNull Permission parent) {
+         Permission perm = registerPermission(name, desc, def);
+-        parent.getChildren().put(perm.getName(), true);
++        parent.getChildren().put(perm.getName(), null); // Purpur - Fix default permission system
+         return perm;
+     }
+ 
+@@ -79,7 +79,7 @@ public final class DefaultPermissions {
+     @NotNull
+     public static Permission registerPermission(@NotNull String name, @Nullable String desc, @Nullable PermissionDefault def, @Nullable Map<String, Boolean> children, @NotNull Permission parent) {
+         Permission perm = registerPermission(name, desc, def, children);
+-        parent.getChildren().put(perm.getName(), true);
++        parent.getChildren().put(perm.getName(), null); // Purpur - Fix default permission system
+         return perm;
+     }
+ 
+@@ -89,6 +89,8 @@ public final class DefaultPermissions {
+         CommandPermissions.registerPermissions(parent);
+         BroadcastPermissions.registerPermissions(parent);
+ 
++        org.purpurmc.purpur.util.permissions.PurpurPermissions.registerPermissions(); // Purpur - Default permissions
++
+         parent.recalculatePermissibles();
+     }
+ }
+diff --git a/src/main/java/org/spigotmc/CustomTimingsHandler.java b/src/main/java/org/spigotmc/CustomTimingsHandler.java
+index 5fbacfcf108432c5187aa9a4092d00d7d5b0fd53..b4249da3eb26eae26ec000cc4d56cd21ac2fc6d5 100644
+--- a/src/main/java/org/spigotmc/CustomTimingsHandler.java
++++ b/src/main/java/org/spigotmc/CustomTimingsHandler.java
+@@ -61,7 +61,7 @@ public final class CustomTimingsHandler {
+         handler = timing;
+     }
+ 
+-    public void startTiming() { handler.startTiming(); }
+-    public void stopTiming() { handler.stopTiming(); }
++    public void startTiming() { /*handler.startTiming();*/ } // Purpur - Remove Timings
++    public void stopTiming() { /*handler.stopTiming();*/ } // Purpur - Remove Timings
+ 
+ }

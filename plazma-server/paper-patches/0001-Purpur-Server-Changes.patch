@@ -1,0 +1,2725 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: AlphaKR93 <dev@alpha93.kr>
+Date: Tue, 21 Jan 2025 08:14:25 +0900
+Subject: [PATCH] Purpur Server Changes
+
+
+diff --git a/src/main/java/com/destroystokyo/paper/Metrics.java b/src/main/java/com/destroystokyo/paper/Metrics.java
+index 8f62879582195d8ae4f64bd23f752fa133b1c973..be1bb14dca9367b9685841985b6198376986c496 100644
+--- a/src/main/java/com/destroystokyo/paper/Metrics.java
++++ b/src/main/java/com/destroystokyo/paper/Metrics.java
+@@ -592,7 +592,7 @@ public class Metrics {
+             boolean logFailedRequests = config.getBoolean("logFailedRequests", false);
+             // Only start Metrics, if it's enabled in the config
+             if (config.getBoolean("enabled", true)) {
+-                Metrics metrics = new Metrics("Paper", serverUUID, logFailedRequests, Bukkit.getLogger());
++                Metrics metrics = new Metrics("Purpur", serverUUID, logFailedRequests, Bukkit.getLogger()); // Pufferfish // Purpur - Purpur config files
+ 
+                 metrics.addCustomChart(new Metrics.SimplePie("minecraft_version", () -> {
+                     String minecraftVersion = Bukkit.getVersion();
+@@ -601,16 +601,8 @@ public class Metrics {
+                 }));
+ 
+                 metrics.addCustomChart(new Metrics.SingleLineChart("players", () -> Bukkit.getOnlinePlayers().size()));
+-                metrics.addCustomChart(new Metrics.SimplePie("online_mode", () -> Bukkit.getOnlineMode() ? "online" : "offline"));
+-                final String paperVersion;
+-                final String implVersion = org.bukkit.craftbukkit.Main.class.getPackage().getImplementationVersion();
+-                if (implVersion != null) {
+-                    final String buildOrHash = implVersion.substring(implVersion.lastIndexOf('-') + 1);
+-                    paperVersion = "git-Paper-%s-%s".formatted(Bukkit.getServer().getMinecraftVersion(), buildOrHash);
+-                } else {
+-                    paperVersion = "unknown";
+-                }
+-                metrics.addCustomChart(new Metrics.SimplePie("paper_version", () -> paperVersion));
++                metrics.addCustomChart(new Metrics.SimplePie("online_mode", () -> Bukkit.getOnlineMode() ? "online" : (io.papermc.paper.configuration.GlobalConfiguration.get().proxies.isProxyOnlineMode() ? "bungee" : "offline"))); // Purpur - Purpur config files
++                metrics.addCustomChart(new Metrics.SimplePie("purpur_version", () -> (org.bukkit.craftbukkit.Main.class.getPackage().getImplementationVersion() != null) ? org.bukkit.craftbukkit.Main.class.getPackage().getImplementationVersion() : "unknown")); // Purpur - Purpur config files
+ 
+                 metrics.addCustomChart(new Metrics.DrilldownPie("java_version", () -> {
+                     Map<String, Map<String, Integer>> map = new HashMap<>();
+diff --git a/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java b/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java
+index 532306cacd52579cdf37e4aca25887b1ed3ba6a1..fe66e43c27e0798770e102d1385bacbaa90bda07 100644
+--- a/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java
++++ b/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java
+@@ -35,7 +35,10 @@ public class PaperVersionFetcher implements VersionFetcher {
+     private static final Logger LOGGER = LogUtils.getClassLogger();
+     private static final int DISTANCE_ERROR = -1;
+     private static final int DISTANCE_UNKNOWN = -2;
+-    private static final String DOWNLOAD_PAGE = "https://papermc.io/downloads/paper";
++    // Purpur start - Rebrand
++    private static final String DOWNLOAD_PAGE = "https://purpurmc.org/downloads";
++    private static int distance = DISTANCE_UNKNOWN; public int distance() { return distance; }
++    // Purpur end - Rebrand
+ 
+     @Override
+     public long getCacheTime() {
+@@ -49,7 +52,7 @@ public class PaperVersionFetcher implements VersionFetcher {
+         if (build.buildNumber().isEmpty() && build.gitCommit().isEmpty()) {
+             updateMessage = text("You are running a development version without access to version information", color(0xFF5300));
+         } else {
+-            updateMessage = getUpdateStatusMessage("PaperMC/Paper", build);
++            updateMessage = getUpdateStatusMessage("PurpurMC/Purpur", build); // Purpur - Rebrand
+         }
+         final @Nullable Component history = this.getHistory();
+ 
+@@ -57,7 +60,7 @@ public class PaperVersionFetcher implements VersionFetcher {
+     }
+ 
+     private static Component getUpdateStatusMessage(final String repo, final ServerBuildInfo build) {
+-        int distance = DISTANCE_ERROR;
++        //int distance = DISTANCE_ERROR; // Purpur - use field - Rebrand
+ 
+         final OptionalInt buildNumber = build.buildNumber();
+         if (buildNumber.isPresent()) {
+@@ -71,10 +74,10 @@ public class PaperVersionFetcher implements VersionFetcher {
+         }
+ 
+         return switch (distance) {
+-            case DISTANCE_ERROR -> text("Error obtaining version information", NamedTextColor.YELLOW);
+-            case 0 -> text("You are running the latest version", NamedTextColor.GREEN);
+-            case DISTANCE_UNKNOWN -> text("Unknown version", NamedTextColor.YELLOW);
+-            default -> text("You are " + distance + " version(s) behind", NamedTextColor.YELLOW)
++            case DISTANCE_ERROR -> text("* Error obtaining version information", NamedTextColor.RED); // Purpur - Rebrand
++            case 0 -> text("* You are running the latest version", NamedTextColor.GREEN); // Purpur - Rebrand
++            case DISTANCE_UNKNOWN -> text("* Unknown version", NamedTextColor.YELLOW); // Purpur - Rebrand
++            default -> text("* You are " + distance + " version(s) behind", NamedTextColor.YELLOW) // Purpur - Rebrand
+                 .append(Component.newline())
+                 .append(text("Download the new version at: ")
+                     .append(text(DOWNLOAD_PAGE, NamedTextColor.GOLD)
+@@ -86,18 +89,15 @@ public class PaperVersionFetcher implements VersionFetcher {
+     private static int fetchDistanceFromSiteApi(final ServerBuildInfo build, final int jenkinsBuild) {
+         try {
+             try (final BufferedReader reader = Resources.asCharSource(
+-                URI.create("https://api.papermc.io/v2/projects/paper/versions/" + build.minecraftVersionId()).toURL(),
++                URI.create("https://api.purpurmc.org/v2/purpur/" + build.minecraftVersionId()).toURL(), // Purpur - Rebrand
+                 Charsets.UTF_8
+             ).openBufferedStream()) {
+                 final JsonObject json = new Gson().fromJson(reader, JsonObject.class);
+-                final JsonArray builds = json.getAsJsonArray("builds");
+-                final int latest = StreamSupport.stream(builds.spliterator(), false)
+-                    .mapToInt(JsonElement::getAsInt)
+-                    .max()
+-                    .orElseThrow();
++                //final JsonArray builds = json.getAsJsonArray("builds"); // Purpur - Rebrand
++                final int latest = json.getAsJsonObject("builds").getAsJsonPrimitive("latest").getAsInt(); // Purpur - Rebrand
+                 return latest - jenkinsBuild;
+             } catch (final JsonSyntaxException ex) {
+-                LOGGER.error("Error parsing json from Paper's downloads API", ex);
++                LOGGER.error("Error parsing json from Purpur's downloads API", ex); // Purpur - Rebrand
+                 return DISTANCE_ERROR;
+             }
+         } catch (final IOException e) {
+@@ -141,6 +141,6 @@ public class PaperVersionFetcher implements VersionFetcher {
+             return null;
+         }
+ 
+-        return text("Previous version: " + oldVersion, NamedTextColor.GRAY, TextDecoration.ITALIC);
++        return text("Previous: " + oldVersion, NamedTextColor.GRAY); // Purpur - Rebrand
+     }
+ }
+diff --git a/src/main/java/com/destroystokyo/paper/console/PaperConsole.java b/src/main/java/com/destroystokyo/paper/console/PaperConsole.java
+index 6ee39b534b8d992655bc0cef3c299d12cbae0034..bc7e4e5560708fea89c584b1d8b471f4966f311a 100644
+--- a/src/main/java/com/destroystokyo/paper/console/PaperConsole.java
++++ b/src/main/java/com/destroystokyo/paper/console/PaperConsole.java
+@@ -20,7 +20,7 @@ public final class PaperConsole extends SimpleTerminalConsole {
+     @Override
+     protected LineReader buildReader(LineReaderBuilder builder) {
+         builder
+-                .appName("Paper")
++                .appName("Purpur") // Purpur - Rebrand
+                 .variable(LineReader.HISTORY_FILE, java.nio.file.Paths.get(".console_history"))
+                 .completer(new ConsoleCommandCompleter(this.server))
+                 .option(LineReader.Option.COMPLETE_IN_WORD, true);
+diff --git a/src/main/java/com/destroystokyo/paper/entity/ai/MobGoalHelper.java b/src/main/java/com/destroystokyo/paper/entity/ai/MobGoalHelper.java
+index 6bdc683b5ade408ee27f1d6636b4d60c8c89cb7c..bc6d3898d8784e50a0e2264bbb5bde63add61f4e 100644
+--- a/src/main/java/com/destroystokyo/paper/entity/ai/MobGoalHelper.java
++++ b/src/main/java/com/destroystokyo/paper/entity/ai/MobGoalHelper.java
+@@ -136,6 +136,10 @@ public class MobGoalHelper {
+     static {
+         // TODO these kinda should be checked on each release, in case obfuscation changes
+         deobfuscationMap.put("abstract_skeleton_1", "abstract_skeleton_melee");
++        // Purpur start - Add option to disable zombie aggressiveness towards villagers
++        deobfuscationMap.put("zombie_1", "zombie_attack_villager");
++        deobfuscationMap.put("drowned_1", "drowned_attack_villager");
++        // Purpur end - Add option to disable zombie aggressiveness towards villagers
+ 
+         ignored.add("goal_selector_1");
+         ignored.add("goal_selector_2");
+diff --git a/src/main/java/com/destroystokyo/paper/gui/RAMDetails.java b/src/main/java/com/destroystokyo/paper/gui/RAMDetails.java
+index 12b327eea95e0de9e9c39b7d039badee8ec46508..46696cfe1d99e705d383a1fe4e66f5c5646053d2 100644
+--- a/src/main/java/com/destroystokyo/paper/gui/RAMDetails.java
++++ b/src/main/java/com/destroystokyo/paper/gui/RAMDetails.java
+@@ -61,6 +61,7 @@ public class RAMDetails extends JList<String> {
+ 
+         // Follows CraftServer#getTPS
+         double[] tps = new double[] {
++            server.tps5s.getAverage(), // Purpur - Add 5 second tps average in /tps
+             server.tps1.getAverage(),
+             server.tps5.getAverage(),
+             server.tps15.getAverage()
+@@ -73,7 +74,7 @@ public class RAMDetails extends JList<String> {
+         vector.add("Memory use: " + (data.getUsedMem() / 1024L / 1024L) + " mb (" + (data.getFree() * 100L / data.getMax()) + "% free)");
+         vector.add("Heap: " + (data.getTotal() / 1024L / 1024L) + " / " + (data.getMax() / 1024L / 1024L) + " mb");
+         vector.add("Avg tick: " + DECIMAL_FORMAT.format((double)this.server.getAverageTickTimeNanos() / (double) TimeUtil.NANOSECONDS_PER_MILLISECOND) + " ms");
+-        vector.add("TPS from last 1m, 5m, 15m: " + String.join(", ", tpsAvg));
++        vector.add("TPS from last 5s, 1m, 5m, 15m: " + String.join(", ", tpsAvg)); // Purpur - Add 5 second tps average in /tps
+         setListData(vector);
+     }
+ 
+diff --git a/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java b/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java
+index 790bad0494454ca12ee152e3de6da3da634d9b20..b36e30fd4057a938e4d90cb42a2dca661f16478e 100644
+--- a/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java
++++ b/src/main/java/io/papermc/paper/ServerBuildInfoImpl.java
+@@ -31,6 +31,7 @@ public record ServerBuildInfoImpl(
+     private static final String ATTRIBUTE_GIT_COMMIT = "Git-Commit";
+ 
+     private static final String BRAND_PAPER_NAME = "Paper";
++    private static final String BRAND_PURPUR_NAME = "Purpur"; // Purpur - Rebrand
+ 
+     private static final String BUILD_DEV = "DEV";
+ 
+@@ -42,9 +43,9 @@ public record ServerBuildInfoImpl(
+         this(
+             getManifestAttribute(manifest, ATTRIBUTE_BRAND_ID)
+                 .map(Key::key)
+-                .orElse(BRAND_PAPER_ID),
++                .orElse(BRAND_PURPUR_ID), // Purpur - Fix pufferfish issues // Purpur - Rebrand
+             getManifestAttribute(manifest, ATTRIBUTE_BRAND_NAME)
+-                .orElse(BRAND_PAPER_NAME),
++                .orElse(BRAND_PURPUR_NAME), // Purpur - Fix pufferfish issues // Purpur - Rebrand
+             SharedConstants.getCurrentVersion().getId(),
+             SharedConstants.getCurrentVersion().getName(),
+             getManifestAttribute(manifest, ATTRIBUTE_BUILD_NUMBER)
+@@ -61,7 +62,7 @@ public record ServerBuildInfoImpl(
+ 
+     @Override
+     public boolean isBrandCompatible(final @NotNull Key brandId) {
+-        return brandId.equals(this.brandId);
++        return brandId.equals(this.brandId) || brandId.equals(BRAND_PAPER_ID); // Purpur - Fix pufferfish issues // Purpur - Rebrand
+     }
+ 
+     @Override
+diff --git a/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java b/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java
+index f0fce4113fb07c64adbec029d177c236cbdcbae8..da9ba821362605ca86df0fc6cb4f3cabfc4d5809 100644
+--- a/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java
++++ b/src/main/java/io/papermc/paper/command/PaperPluginsCommand.java
+@@ -78,10 +78,10 @@ public class PaperPluginsCommand extends BukkitCommand {
+         this.setAliases(Arrays.asList("pl"));
+     }
+ 
+-    private static <T> List<Component> formatProviders(TreeMap<String, PluginProvider<T>> plugins) {
++    private static <T> List<Component> formatProviders(TreeMap<String, PluginProvider<T>> plugins, @NotNull CommandSender sender) { // Purpur - Improve output of plugins command
+         List<Component> components = new ArrayList<>(plugins.size());
+         for (PluginProvider<T> entry : plugins.values()) {
+-            components.add(formatProvider(entry));
++            components.add(formatProvider(entry, sender)); // Purpur - Improve output of plugins command
+         }
+ 
+         boolean isFirst = true;
+@@ -109,7 +109,7 @@ public class PaperPluginsCommand extends BukkitCommand {
+         return formattedSublists;
+     }
+ 
+-    private static Component formatProvider(PluginProvider<?> provider) {
++    private static Component formatProvider(PluginProvider<?> provider, @NotNull CommandSender sender) { // Purpur - Improve output of plugins command
+         TextComponent.Builder builder = Component.text();
+         if (provider instanceof SpigotPluginProvider spigotPluginProvider && CraftMagicNumbers.isLegacy(spigotPluginProvider.getMeta())) {
+             builder.append(LEGACY_PLUGIN_STAR);
+@@ -117,13 +117,65 @@ public class PaperPluginsCommand extends BukkitCommand {
+ 
+         String name = provider.getMeta().getName();
+         Component pluginName = Component.text(name, fromStatus(provider))
+-            .clickEvent(ClickEvent.runCommand("/version " + name));
++        // Purpur start - Improve output of plugins command
++            .clickEvent(ClickEvent.suggestCommand("/version " + name));
++
++        if (sender instanceof org.bukkit.entity.Player && sender.hasPermission("bukkit.command.version")) {
++            // Event components
++            String description = provider.getMeta().getDescription();
++            TextComponent.Builder hover = Component.text();
++            hover.append(Component.text("Version: ", NamedTextColor.WHITE)).append(Component.text(provider.getMeta().getVersion(), NamedTextColor.GREEN));
++
++            if (description != null) {
++                hover.append(Component.newline())
++                        .append(Component.text("Description: ", NamedTextColor.WHITE))
++                        .append(Component.text(description, NamedTextColor.GREEN));
++            }
++
++            if (provider.getMeta().getWebsite() != null) {
++                hover.append(Component.newline())
++                        .append(Component.text("Website: ", NamedTextColor.WHITE))
++                        .append(Component.text(provider.getMeta().getWebsite(), NamedTextColor.GREEN));
++            }
++
++            if (!provider.getMeta().getAuthors().isEmpty()) {
++                hover.append(Component.newline());
++                if (provider.getMeta().getAuthors().size() == 1) {
++                    hover.append(Component.text("Author: "));
++                } else {
++                    hover.append(Component.text("Authors: "));
++                }
++
++                hover.append(getAuthors(provider.getMeta()));
++            }
++
++            pluginName.hoverEvent(hover.build());
++        }
++        // Purpur end - Improve output of plugins command
+ 
+         builder.append(pluginName);
+ 
+         return builder.build();
+     }
+ 
++    // Purpur start - Improve output of plugins command
++    @NotNull
++    private static TextComponent getAuthors(@NotNull final PluginMeta pluginMeta) {
++        TextComponent.Builder builder = Component.text();
++        List<String> authors = pluginMeta.getAuthors();
++
++        for (int i = 0; i < authors.size(); i++) {
++            if (i > 0) {
++                builder.append(Component.text(i < authors.size() - 1 ? ", " : " and ", NamedTextColor.WHITE));
++            }
++
++            builder.append(Component.text(authors.get(i), NamedTextColor.GREEN));
++        }
++
++        return builder.build();
++    }
++    // Purpur end - Improve output of plugins command
++
+     private static Component asPlainComponents(String strings) {
+         net.kyori.adventure.text.TextComponent.Builder builder = Component.text();
+         for (String string : strings.split("\n")) {
+@@ -182,24 +234,24 @@ public class PaperPluginsCommand extends BukkitCommand {
+             }
+         }
+ 
+-        Component infoMessage = Component.text("Server Plugins (%s):".formatted(paperPlugins.size() + spigotPlugins.size()), NamedTextColor.WHITE);
++        //Component infoMessage = Component.text("Server Plugins (%s):".formatted(paperPlugins.size() + spigotPlugins.size()), NamedTextColor.WHITE); // Purpur - Improve output of plugins command
+             //.append(INFO_ICON_START.hoverEvent(SERVER_PLUGIN_INFO)); TODO: Add docs
+ 
+-        sender.sendMessage(infoMessage);
++        //sender.sendMessage(infoMessage); // Purpur - Improve output of plugins command
+ 
+-        if (!paperPlugins.isEmpty()) {
+-            sender.sendMessage(PAPER_HEADER);
+-        }
++        //if (!paperPlugins.isEmpty()) { // Purpur - Improve output of plugins command
++            sender.sendMessage(PAPER_HEADER.append(Component.text(" (%s):".formatted(paperPlugins.size())))); // Purpur - Improve output of plugins command
++        //} // Purpur - Improve output of plugins command
+ 
+-        for (Component component : formatProviders(paperPlugins)) {
++        for (Component component : formatProviders(paperPlugins, sender)) { // Purpur - Improve output of plugins command
+             sender.sendMessage(component);
+         }
+ 
+-        if (!spigotPlugins.isEmpty()) {
+-            sender.sendMessage(BUKKIT_HEADER);
+-        }
++        //if (!spigotPlugins.isEmpty()) { // Purpur - Improve output of plugins command
++            sender.sendMessage(BUKKIT_HEADER.append(Component.text(" (%s):".formatted(spigotPlugins.size())))); // Purpur - Improve output of plugins command
++        //} // Purpur - Improve output of plugins command
+         
+-        for (Component component : formatProviders(spigotPlugins)) {
++        for (Component component : formatProviders(spigotPlugins, sender)) { // Purpur - Improve output of plugins command
+             sender.sendMessage(component);
+         }
+ 
+diff --git a/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java b/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java
+index e48fa405d92fab221fa8331b65c8f324e801d439..e319d6337811051de478d584a37015c450960701 100644
+--- a/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java
++++ b/src/main/java/io/papermc/paper/configuration/PaperConfigurations.java
+@@ -267,6 +267,7 @@ public class PaperConfigurations extends Configurations<GlobalConfiguration, Wor
+         for (final NodePath path : RemovedConfigurations.REMOVED_WORLD_PATHS) {
+             builder.addAction(path, TransformAction.remove());
+         }
++        org.purpurmc.purpur.configuration.transformation.VoidDamageHeightMigration.apply(builder, contextMap); // Purpur - Configurable void damage height and damage
+         builder.build().apply(node);
+ 
+         final ConfigurationTransformation.VersionedBuilder versionedBuilder = Transformations.versionedBuilder();
+diff --git a/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java b/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java
+index d7c9acaffdcff5e35e026ae90a3e521bab13b074..a426ba82af695426952bb5e04fa721e6ccff2f89 100644
+--- a/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java
++++ b/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java
+@@ -398,6 +398,7 @@ public class WorldConfiguration extends ConfigurationPart {
+         public boolean useVanillaWorldScoreboardNameColoring = false;
+     }
+ 
++    @Setting(org.purpurmc.purpur.configuration.transformation.VoidDamageHeightMigration.ENVIRONMENT_KEY) // Purpur - Configurable void damage height and damage
+     public Environment environment;
+ 
+     public class Environment extends ConfigurationPart {
+@@ -407,7 +408,9 @@ public class WorldConfiguration extends ConfigurationPart {
+         public boolean disableExplosionKnockback = false;
+         public boolean generateFlatBedrock = false;
+         public FrostedIce frostedIce;
++        @Setting(org.purpurmc.purpur.configuration.transformation.VoidDamageHeightMigration.VOID_DAMAGE_KEY) // Purpur - Configurable void damage height and damage
+         public DoubleOr.Disabled voidDamageAmount = new DoubleOr.Disabled(OptionalDouble.of(4));
++        @Setting(org.purpurmc.purpur.configuration.transformation.VoidDamageHeightMigration.VOID_DAMAGE_MIN_HEIGHT_OFFSET_KEY) // Purpur - Configurable void damage height and damage
+         public double voidDamageMinBuildHeightOffset = -64.0;
+ 
+         public class FrostedIce extends ConfigurationPart {
+diff --git a/src/main/java/io/papermc/paper/logging/SysoutCatcher.java b/src/main/java/io/papermc/paper/logging/SysoutCatcher.java
+index a8e813ca89b033f061e695288b3383bdcf128531..96a377a07d8396f893954a3ba97fbf88d73faf6d 100644
+--- a/src/main/java/io/papermc/paper/logging/SysoutCatcher.java
++++ b/src/main/java/io/papermc/paper/logging/SysoutCatcher.java
+@@ -54,9 +54,9 @@ public final class SysoutCatcher {
+                 final JavaPlugin plugin = JavaPlugin.getProvidingPlugin(clazz);
+ 
+                 // Instead of just printing the message, send it to the plugin's logger
+-                plugin.getLogger().log(this.level, this.prefix + line);
++                plugin.getLogger().log(this.level, /*this.prefix +*/ line); // Purpur - Enhance SysoutCatcher - prefix not needed
+ 
+-                if (SysoutCatcher.SUPPRESS_NAGS) {
++                if (true || SysoutCatcher.SUPPRESS_NAGS) { // Purpur - Enhance SysoutCatcher - nagging is annoying
+                     return;
+                 }
+                 if (SysoutCatcher.NAG_INTERVAL > 0 || SysoutCatcher.NAG_TIMEOUT > 0) {
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftOfflinePlayer.java b/src/main/java/org/bukkit/craftbukkit/CraftOfflinePlayer.java
+index 94ca0407303c4493ab4928b12ec6ecc75aaca549..f2d87c12dd19210ce7e2147fada5c10191008632 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftOfflinePlayer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftOfflinePlayer.java
+@@ -363,14 +363,26 @@ public class CraftOfflinePlayer implements OfflinePlayer, ConfigurationSerializa
+ 
+     @Override
+     public Location getLocation() {
++        // Purpur start - OfflinePlayer API
++        if (this.isOnline()) {
++            return this.getPlayer().getLocation();
++        }
++        // Purpur end - OfflinePlayer API
++
+         CompoundTag data = this.getData();
+         if (data == null) {
+             return null;
+         }
+ 
+-        if (data.contains("Pos") && data.contains("Rotation")) {
+-            ListTag position = (ListTag) data.get("Pos");
+-            ListTag rotation = (ListTag) data.get("Rotation");
++        // Purpur start - OfflinePlayer API
++        //if (data.contains("Pos") && data.contains("Rotation")) {
++            ListTag position = data.getList("Pos", net.minecraft.nbt.Tag.TAG_DOUBLE);
++            ListTag rotation = data.getList("Rotation", net.minecraft.nbt.Tag.TAG_FLOAT);
++
++            if (position.isEmpty() && rotation.isEmpty()) {
++                return null;
++            }
++        // Purpur end - OfflinePlayer API
+ 
+             UUID uuid = new UUID(data.getLong("WorldUUIDMost"), data.getLong("WorldUUIDLeast"));
+ 
+@@ -381,9 +393,9 @@ public class CraftOfflinePlayer implements OfflinePlayer, ConfigurationSerializa
+                 rotation.getFloat(0),
+                 rotation.getFloat(1)
+             );
+-        }
++        //} // Purpur - OfflinePlayer API
+ 
+-        return null;
++        //return null; // Purpur - OfflinePlayer API
+     }
+ 
+     @Override
+@@ -626,4 +638,191 @@ public class CraftOfflinePlayer implements OfflinePlayer, ConfigurationSerializa
+             manager.save();
+         }
+     }
++
++    // Purpur start - OfflinePlayer API
++    @Override
++    public boolean getAllowFlight() {
++        if (this.isOnline()) {
++            return this.getPlayer().getAllowFlight();
++        } else {
++            CompoundTag data = this.getData();
++            if (data == null) return false;
++            if (!data.contains("abilities")) return false;
++            CompoundTag abilities = data.getCompound("abilities");
++            return abilities.getByte("mayfly") == (byte) 1;
++        }
++    }
++
++    @Override
++    public void setAllowFlight(boolean flight) {
++        if (this.isOnline()) {
++            this.getPlayer().setAllowFlight(flight);
++        } else {
++            CompoundTag data = this.getData();
++            if (data == null) return;
++            if (!data.contains("abilities")) return;
++            CompoundTag abilities = data.getCompound("abilities");
++            abilities.putByte("mayfly", (byte) (flight ? 1 : 0));
++            data.put("abilities", abilities);
++            save(data);
++        }
++    }
++
++    @Override
++    public boolean isFlying() {
++        if (this.isOnline()) {
++            return this.isFlying();
++        } else {
++            CompoundTag data = this.getData();
++            if (data == null) return false;
++            if (!data.contains("abilities")) return false;
++            CompoundTag abilities = data.getCompound("abilities");
++            return abilities.getByte("flying") == (byte) 1;
++        }
++    }
++
++    @Override
++    public void setFlying(boolean value) {
++        if (this.isOnline()) {
++            this.getPlayer().setFlying(value);
++        } else {
++            CompoundTag data = this.getData();
++            if (data == null) return;
++            if (!data.contains("abilities")) return;
++            CompoundTag abilities = data.getCompound("abilities");
++            abilities.putByte("mayfly", (byte) (value ? 1 : 0));
++            data.put("abilities", abilities);
++            save(data);
++        }
++    }
++
++    @Override
++    public void setFlySpeed(float value) throws IllegalArgumentException {
++        if (value < -1f || value > 1f) throw new IllegalArgumentException("FlySpeed needs to be between -1 and 1");
++        if (this.isOnline()) {
++            this.getPlayer().setFlySpeed(value);
++        } else {
++            CompoundTag data = this.getData();
++            if (data == null) return;
++            if (!data.contains("abilities")) return;
++            CompoundTag abilities = data.getCompound("abilities");
++            abilities.putFloat("flySpeed", value);
++            data.put("abilities", abilities);
++            save(data);
++        }
++    }
++
++    @Override
++    public float getFlySpeed() {
++        if (this.isOnline()) {
++            return this.getPlayer().getFlySpeed();
++        } else {
++            CompoundTag data = this.getData();
++            if (data == null) return 0;
++            if (!data.contains("abilities")) return 0;
++            CompoundTag abilities = data.getCompound("abilities");
++            return abilities.getFloat("flySpeed");
++        }
++    }
++
++    @Override
++    public void setWalkSpeed(float value) throws IllegalArgumentException {
++        if (value < -1f || value > 1f) throw new IllegalArgumentException("WalkSpeed needs to be between -1 and 1");
++        if (this.isOnline()) {
++            this.getPlayer().setWalkSpeed(value);
++        } else {
++            CompoundTag data = this.getData();
++            if (data == null) return;
++            if (!data.contains("abilities")) return;
++            CompoundTag abilities = data.getCompound("abilities");
++            abilities.putFloat("walkSpeed", value);
++            data.put("abilities", abilities);
++            save(data);
++        }
++    }
++
++    @Override
++    public float getWalkSpeed() {
++        if (this.isOnline()) {
++            return this.getPlayer().getWalkSpeed();
++        } else {
++            CompoundTag data = this.getData();
++            if (data == null) return 0;
++            if (!data.contains("abilities")) return 0;
++            CompoundTag abilities = data.getCompound("abilities");
++            return abilities.getFloat("walkSpeed");
++        }
++    }
++
++    @Override
++    public boolean teleportOffline(Location destination) {
++        if (this.isOnline()) {
++            return this.getPlayer().teleport(destination);
++        } else {
++            return setLocation(destination);
++        }
++    }
++
++    @Override
++    public boolean teleportOffline(Location destination, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause cause){
++        if (this.isOnline()) {
++            return this.getPlayer().teleport(destination, cause);
++        } else {
++            return setLocation(destination);
++        }
++    }
++
++    @Override
++    public java.util.concurrent.CompletableFuture<Boolean> teleportOfflineAsync(Location destination) {
++        if (this.isOnline()) {
++            return this.getPlayer().teleportAsync(destination);
++        } else {
++            return java.util.concurrent.CompletableFuture.completedFuture(setLocation(destination));
++        }
++    }
++
++    @Override
++    public java.util.concurrent.CompletableFuture<Boolean> teleportOfflineAsync(Location destination, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause cause) {
++        if (this.isOnline()) {
++            return this.getPlayer().teleportAsync(destination, cause);
++        } else {
++            return java.util.concurrent.CompletableFuture.completedFuture(setLocation(destination));
++        }
++    }
++
++    private boolean setLocation(Location location) {
++        CompoundTag data = this.getData();
++        if (data == null) return false;
++        data.putLong("WorldUUIDMost", location.getWorld().getUID().getMostSignificantBits());
++        data.putLong("WorldUUIDLeast", location.getWorld().getUID().getLeastSignificantBits());
++        net.minecraft.nbt.ListTag position = new net.minecraft.nbt.ListTag();
++        position.add(net.minecraft.nbt.DoubleTag.valueOf(location.getX()));
++        position.add(net.minecraft.nbt.DoubleTag.valueOf(location.getY()));
++        position.add(net.minecraft.nbt.DoubleTag.valueOf(location.getZ()));
++        data.put("Pos", position);
++        net.minecraft.nbt.ListTag rotation = new net.minecraft.nbt.ListTag();
++        rotation.add(net.minecraft.nbt.FloatTag.valueOf(location.getYaw()));
++        rotation.add(net.minecraft.nbt.FloatTag.valueOf(location.getPitch()));
++        data.put("Rotation", rotation);
++        save(data);
++        return true;
++    }
++
++    /**
++     * Safely replaces player's .dat file with provided CompoundTag
++     * @param compoundTag
++     */
++    private void save(CompoundTag compoundTag) {
++        File playerDir = server.console.playerDataStorage.getPlayerDir();
++        try {
++            File tempFile = File.createTempFile(this.getUniqueId()+"-", ".dat", playerDir);
++            net.minecraft.nbt.NbtIo.writeCompressed(compoundTag, tempFile.toPath());
++            File playerDataFile = new File(playerDir, this.getUniqueId()+".dat");
++            File playerDataFileOld = new File(playerDir, this.getUniqueId()+".dat_old");
++            net.minecraft.Util.safeReplaceFile(playerDataFile.toPath(), tempFile.toPath(), playerDataFileOld.toPath());
++        } catch (java.io.IOException e) {
++            e.printStackTrace();
++        }
++    }
++    // Purpur end - OfflinePlayer API
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index d2de789967f8f1942e91d9e4c547113a5e31382b..d067b775b7311631b947fd0faa0dce4129c4a846 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -427,6 +427,20 @@ public final class CraftServer implements Server {
+         this.paperPluginManager = new io.papermc.paper.plugin.manager.PaperPluginManagerImpl(this, this.commandMap, pluginManager);
+         this.pluginManager.paperPluginManager = this.paperPluginManager;
+          // Paper end
++        // Purpur start - Language API
++        org.purpurmc.purpur.language.Language.setLanguage(new org.purpurmc.purpur.language.Language() {
++            private net.minecraft.locale.Language language = net.minecraft.locale.Language.getInstance();
++            @Override
++            public boolean has(@org.jetbrains.annotations.NotNull String key) {
++                return language.has(key);
++            }
++
++            @Override
++            public @org.jetbrains.annotations.NotNull String getOrDefault(@org.jetbrains.annotations.NotNull String key) {
++                return language.getOrDefault(key);
++            }
++        });
++        // Purpur end - Language API
+ 
+         CraftRegistry.setMinecraftRegistry(console.registryAccess());
+ 
+@@ -1087,6 +1101,7 @@ public final class CraftServer implements Server {
+ 
+         org.spigotmc.SpigotConfig.init((File) this.console.options.valueOf("spigot-settings")); // Spigot
+         this.console.paperConfigurations.reloadConfigs(this.console);
++        org.purpurmc.purpur.PurpurConfig.init((File) console.options.valueOf("purpur-settings")); // Purpur - Purpur config files
+         for (ServerLevel world : this.console.getAllLevels()) {
+             // world.serverLevelData.setDifficulty(config.difficulty); // Paper - per level difficulty
+             world.setSpawnSettings(world.serverLevelData.getDifficulty() != Difficulty.PEACEFUL && config.spawnMonsters); // Paper - per level difficulty (from MinecraftServer#setDifficulty(ServerLevel, Difficulty, boolean))
+@@ -1102,6 +1117,7 @@ public final class CraftServer implements Server {
+                 }
+             }
+             world.spigotConfig.init(); // Spigot
++            world.purpurConfig.init(); // Purpur - Purpur config files
+         }
+ 
+         Plugin[] pluginClone = pluginManager.getPlugins().clone(); // Paper
+@@ -1119,6 +1135,7 @@ public final class CraftServer implements Server {
+         org.spigotmc.SpigotConfig.registerCommands(); // Spigot
+         io.papermc.paper.command.PaperCommands.registerCommands(this.console); // Paper
+         this.spark.registerCommandBeforePlugins(this); // Paper - spark
++        org.purpurmc.purpur.PurpurConfig.registerCommands(); // Purpur - Purpur config files
+         this.overrideAllCommandBlockCommands = this.commandsConfiguration.getStringList("command-block-overrides").contains("*");
+         this.ignoreVanillaPermissions = this.commandsConfiguration.getBoolean("ignore-vanilla-permissions");
+ 
+@@ -1646,6 +1663,60 @@ public final class CraftServer implements Server {
+         return true;
+     }
+ 
++    // Purpur start - Added the ability to add combustible items
++    @Override
++    public void addFuel(org.bukkit.Material material, int burnTime) {
++        Preconditions.checkArgument(burnTime > 0, "BurnTime must be greater than 0");
++
++        net.minecraft.world.item.ItemStack itemStack = net.minecraft.world.item.ItemStack.fromBukkitCopy(new ItemStack(material));
++        MinecraftServer.getServer().fuelValues().values.put(itemStack.getItem(), burnTime);
++    }
++
++    @Override
++    public void removeFuel(org.bukkit.Material material) {
++        net.minecraft.world.item.ItemStack itemStack = net.minecraft.world.item.ItemStack.fromBukkitCopy(new ItemStack(material));
++        MinecraftServer.getServer().fuelValues().values.keySet().removeIf(itemStack::is);
++    }
++    // Purpur end - Added the ability to add combustible items
++
++    // Purpur start - Debug Marker API
++    @Override
++    public void sendBlockHighlight(Location location, int duration) {
++        sendBlockHighlight(location, duration, "", 0x6400FF00);
++    }
++
++    @Override
++    public void sendBlockHighlight(Location location, int duration, int argb) {
++        sendBlockHighlight(location, duration, "", argb);
++    }
++
++    @Override
++    public void sendBlockHighlight(Location location, int duration, String text) {
++        sendBlockHighlight(location, duration, text, 0x6400FF00);
++    }
++
++    @Override
++    public void sendBlockHighlight(Location location, int duration, String text, int argb) {
++        this.worlds.forEach((name, world) -> world.sendBlockHighlight(location, duration, text, argb));
++    }
++
++    @Override
++    public void sendBlockHighlight(Location location, int duration, org.bukkit.Color color, int transparency) {
++        sendBlockHighlight(location, duration, "", color, transparency);
++    }
++
++    @Override
++    public void sendBlockHighlight(Location location, int duration, String text, org.bukkit.Color color, int transparency) {
++        if (transparency < 0 || transparency > 255) throw new IllegalArgumentException("transparency is outside of 0-255 range");
++        sendBlockHighlight(location, duration, text, transparency << 24 | color.asRGB());
++    }
++
++    @Override
++    public void clearBlockHighlights() {
++        this.worlds.forEach((name, world) -> clearBlockHighlights());
++    }
++    // Purpur end - Debug Marker API
++
+     @Override
+     public List<Recipe> getRecipesFor(ItemStack result) {
+         Preconditions.checkArgument(result != null, "ItemStack cannot be null");
+@@ -3055,6 +3126,18 @@ public final class CraftServer implements Server {
+             return CraftServer.this.console.paperConfigurations.createLegacyObject(CraftServer.this.console);
+         }
+ 
++        // Purpur start - Purpur config files
++        @Override
++        public YamlConfiguration getPurpurConfig() {
++            return org.purpurmc.purpur.PurpurConfig.config;
++        }
++
++        @Override
++        public java.util.Properties getServerProperties() {
++            return getProperties().properties;
++        }
++        // Purpur end - Purpur config files
++
+         @Override
+         public void restart() {
+             org.spigotmc.RestartCommand.restart();
+@@ -3084,6 +3167,7 @@ public final class CraftServer implements Server {
+     @Override
+     public double[] getTPS() {
+         return new double[] {
++            net.minecraft.server.MinecraftServer.getServer().tps5s.getAverage(), // Purpur - Add 5 second tps average in /tps
+             net.minecraft.server.MinecraftServer.getServer().tps1.getAverage(),
+             net.minecraft.server.MinecraftServer.getServer().tps5.getAverage(),
+             net.minecraft.server.MinecraftServer.getServer().tps15.getAverage()
+@@ -3294,4 +3378,18 @@ public final class CraftServer implements Server {
+         this.console.addPluginAllowingSleep(plugin.getName(), value);
+     }
+     // Paper end - API to check if the server is sleeping
++
++    // Purpur start - Bring back server name
++    @Override
++    public String getServerName() {
++        return this.getProperties().serverName;
++    }
++    // Purpur end - Bring back server name
++
++    // Purpur start - Lagging threshold
++    @Override
++    public boolean isLagging() {
++        return getServer().lagging;
++    }
++    // Purpur end - Lagging threshold
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
+index ba32db69c95b325a781cb2dff4200e4464a11baf..ac7c510a50c5eb2e576eceda34b5c90815394fc1 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
+@@ -2349,6 +2349,50 @@ public class CraftWorld extends CraftRegionAccessor implements World {
+         return (this.getHandle().getDragonFight() == null) ? null : new CraftDragonBattle(this.getHandle().getDragonFight());
+     }
+ 
++    // Purpur start - Add local difficulty api
++    public float getLocalDifficultyAt(Location location) {
++        return getHandle().getCurrentDifficultyAt(io.papermc.paper.util.MCUtil.toBlockPosition(location)).getEffectiveDifficulty();
++    }
++    // Purpur end - Add local difficulty api
++
++    // Purpur start - Debug Marker API
++    @Override
++    public void sendBlockHighlight(Location location, int duration) {
++        sendBlockHighlight(location, duration, "", 0x6400FF00);
++    }
++
++    @Override
++    public void sendBlockHighlight(Location location, int duration, int argb) {
++        sendBlockHighlight(location, duration, "", argb);
++    }
++
++    @Override
++    public void sendBlockHighlight(Location location, int duration, String text) {
++        sendBlockHighlight(location, duration, text, 0x6400FF00);
++    }
++
++    @Override
++    public void sendBlockHighlight(Location location, int duration, String text, int argb) {
++        net.minecraft.network.protocol.game.DebugPackets.sendGameTestAddMarker(getHandle(), io.papermc.paper.util.MCUtil.toBlockPosition(location), text, argb, duration);
++    }
++
++    @Override
++    public void sendBlockHighlight(Location location, int duration, org.bukkit.Color color, int transparency) {
++        sendBlockHighlight(location, duration, "", color, transparency);
++    }
++
++    @Override
++    public void sendBlockHighlight(Location location, int duration, String text, org.bukkit.Color color, int transparency) {
++        if (transparency < 0 || transparency > 255) throw new IllegalArgumentException("transparency is outside of 0-255 range");
++        sendBlockHighlight(location, duration, text, transparency << 24 | color.asRGB());
++    }
++
++    @Override
++    public void clearBlockHighlights() {
++        net.minecraft.network.protocol.game.DebugPackets.sendGameTestClearPacket(getHandle());
++    }
++    // Purpur end - Debug Marker API
++
+     @Override
+     public Collection<GeneratedStructure> getStructures(int x, int z) {
+         return this.getStructures(x, z, struct -> true);
+diff --git a/src/main/java/org/bukkit/craftbukkit/Main.java b/src/main/java/org/bukkit/craftbukkit/Main.java
+index ecb0fcd1f3b3f3d7751eded3cdf0977c1889c9ed..90fb036607e752fcf43575be4f03bbf00bbb05c7 100644
+--- a/src/main/java/org/bukkit/craftbukkit/Main.java
++++ b/src/main/java/org/bukkit/craftbukkit/Main.java
+@@ -176,6 +176,13 @@ public class Main {
+                         .describedAs("Jar file");
+                 // Paper end
+ 
++                // Purpur start - Purpur config files
++                acceptsAll(asList("purpur", "purpur-settings"), "File for purpur settings")
++                    .withRequiredArg()
++                    .ofType(File.class)
++                    .defaultsTo(new File("purpur.yml"))
++                    .describedAs("Yml file");
++                // Purpur end - Purpur config files
+                 // Paper start
+                 acceptsAll(asList("server-name"), "Name of the server")
+                         .withRequiredArg()
+@@ -259,7 +266,7 @@ public class Main {
+                     System.setProperty(net.minecrell.terminalconsole.TerminalConsoleAppender.JLINE_OVERRIDE_PROPERTY, "false"); // Paper
+                 }
+ 
+-                if (Main.class.getPackage().getImplementationVendor() != null && System.getProperty("IReallyKnowWhatIAmDoingISwear") == null) {
++                if (false && Main.class.getPackage().getImplementationVendor() != null && System.getProperty("IReallyKnowWhatIAmDoingISwear") == null) { // Purpur - Disable outdated build check
+                     Date buildDate = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss Z").parse(Main.class.getPackage().getImplementationVendor()); // Paper
+ 
+                     Calendar deadline = Calendar.getInstance();
+diff --git a/src/main/java/org/bukkit/craftbukkit/block/CraftBeehive.java b/src/main/java/org/bukkit/craftbukkit/block/CraftBeehive.java
+index 1a2a05160ba51d9c75f1ae6ae61d944d81428722..a86b026f2f420637d125cf697bcd07bf314c98aa 100644
+--- a/src/main/java/org/bukkit/craftbukkit/block/CraftBeehive.java
++++ b/src/main/java/org/bukkit/craftbukkit/block/CraftBeehive.java
+@@ -16,8 +16,15 @@ import org.bukkit.entity.Bee;
+ 
+ public class CraftBeehive extends CraftBlockEntityState<BeehiveBlockEntity> implements Beehive {
+ 
++    private final List<org.purpurmc.purpur.entity.StoredEntity<Bee>> storage = new ArrayList<>(); // Purpur - Stored Bee API
++
+     public CraftBeehive(World world, BeehiveBlockEntity tileEntity) {
+         super(world, tileEntity);
++        // Purpur start - load bees to be able to modify them individually - Stored Bee API
++        for(BeehiveBlockEntity.BeeData data : tileEntity.getStored()) {
++            storage.add(new org.purpurmc.purpur.entity.PurpurStoredBee(data, this));
++        }
++        // Purpur end - Stored Bee API
+     }
+ 
+     protected CraftBeehive(CraftBeehive state, Location location) {
+@@ -76,14 +83,54 @@ public class CraftBeehive extends CraftBlockEntityState<BeehiveBlockEntity> impl
+             }
+         }
+ 
++        storage.clear(); // Purpur - Stored Bee API
+         return bees;
+     }
+ 
++    // Purpur start - Stored Bee API
++    @Override
++    public Bee releaseEntity(org.purpurmc.purpur.entity.StoredEntity<Bee> entity) {
++        ensureNoWorldGeneration();
++
++        if(!getEntities().contains(entity)) {
++            return null;
++        }
++
++        if(isPlaced()) {
++            BeehiveBlockEntity beehive = ((BeehiveBlockEntity) this.getTileEntityFromWorld());
++            BeehiveBlockEntity.BeeData data = ((org.purpurmc.purpur.entity.PurpurStoredBee) entity).getHandle();
++
++            List<Entity> list = beehive.releaseBee(getHandle(), data, BeeReleaseStatus.BEE_RELEASED, true);
++
++            if (list.size() == 1) {
++                storage.remove(entity);
++
++                return (Bee) list.get(0).getBukkitEntity();
++            }
++        }
++
++        return null;
++    }
++
++    @Override
++    public List<org.purpurmc.purpur.entity.StoredEntity<Bee>> getEntities() {
++        return new ArrayList<>(storage);
++    }
++    // Purpur end - Stored Bee API
++
+     @Override
+     public void addEntity(Bee entity) {
+         Preconditions.checkArgument(entity != null, "Entity must not be null");
+ 
++        int length = this.getSnapshot().getStored().size();  // Purpur - Stored Bee API
+         this.getSnapshot().addOccupant(((CraftBee) entity).getHandle());
++
++        // Purpur start - check if new bee was added, and if yes, add to stored bees - Stored Bee API
++        List<BeehiveBlockEntity.BeeData> storedBeeData = this.getSnapshot().getStored();
++        if(length < storedBeeData.size()) {
++            storage.add(new org.purpurmc.purpur.entity.PurpurStoredBee(storedBeeData.getLast(), this));
++        }
++        // Purpur end - Stored Bee API
+     }
+ 
+     @Override
+@@ -100,6 +147,7 @@ public class CraftBeehive extends CraftBlockEntityState<BeehiveBlockEntity> impl
+     @Override
+     public void clearEntities() {
+         getSnapshot().clearBees();
++        storage.clear(); // Purpur - Stored Bee API
+     }
+     // Paper end
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/block/CraftConduit.java b/src/main/java/org/bukkit/craftbukkit/block/CraftConduit.java
+index c1759aeb3e6ad0e4eb66cba3da1b120dd1dce812..a663962e5181e89286caa18f537c1f5758b41623 100644
+--- a/src/main/java/org/bukkit/craftbukkit/block/CraftConduit.java
++++ b/src/main/java/org/bukkit/craftbukkit/block/CraftConduit.java
+@@ -73,7 +73,7 @@ public class CraftConduit extends CraftBlockEntityState<ConduitBlockEntity> impl
+     public int getRange() {
+         this.ensureNoWorldGeneration();
+         ConduitBlockEntity conduit = (ConduitBlockEntity) this.getTileEntityFromWorld();
+-        return (conduit != null) ? ConduitBlockEntity.getRange(conduit.effectBlocks) : 0;
++        return (conduit != null) ? ConduitBlockEntity.getRange(conduit.effectBlocks, this.world.getHandle()) : 0; // Purpur - Conduit behavior configuration
+     }
+ 
+     @Override
+diff --git a/src/main/java/org/bukkit/craftbukkit/command/CraftConsoleCommandSender.java b/src/main/java/org/bukkit/craftbukkit/command/CraftConsoleCommandSender.java
+index 4e56018b64d11f76c8da43fd8f85c6de72204e36..36cec3ed39807e85013e4e3b98c979d7af37ce58 100644
+--- a/src/main/java/org/bukkit/craftbukkit/command/CraftConsoleCommandSender.java
++++ b/src/main/java/org/bukkit/craftbukkit/command/CraftConsoleCommandSender.java
+@@ -21,7 +21,12 @@ public class CraftConsoleCommandSender extends ServerCommandSender implements Co
+ 
+     @Override
+     public void sendMessage(String message) {
+-        this.sendRawMessage(message);
++        // Purpur start - Rebrand
++        String[] parts = message.split("\n");
++        for (String part : parts) {
++        this.sendRawMessage(part);
++        }
++        // Purpur end - Rebrand
+     }
+ 
+     @Override
+@@ -91,7 +96,7 @@ public class CraftConsoleCommandSender extends ServerCommandSender implements Co
+     // Paper start
+     @Override
+     public void sendMessage(final net.kyori.adventure.identity.Identity identity, final net.kyori.adventure.text.Component message, final net.kyori.adventure.audience.MessageType type) {
+-        this.sendRawMessage(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(message));
++        this.sendMessage(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().serialize(message)); // Purpur - Rebrand
+     }
+ 
+     @Override
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftEndermite.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftEndermite.java
+index d657fd2c507a5b215aeab0a5f3e9c2ee892a27c8..3604d92c122b5c8be823098ce7b91e57e976589c 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftEndermite.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftEndermite.java
+@@ -21,12 +21,12 @@ public class CraftEndermite extends CraftMonster implements Endermite {
+ 
+     @Override
+     public boolean isPlayerSpawned() {
+-        return false;
++        return getHandle().isPlayerSpawned(); // Purpur - Add back player spawned endermite API
+     }
+ 
+     @Override
+     public void setPlayerSpawned(boolean playerSpawned) {
+-        // Nop
++        getHandle().setPlayerSpawned(playerSpawned); // Purpur - Add back player spawned endermite API
+     }
+     // Paper start
+     @Override
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+index 6d81a19741868983c54aff6c2c4c0e2bf690ba0d..dca2761fe4765c6e95b5db0d0cb5c818eb8697b4 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+@@ -90,6 +90,25 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+         this.entityType = CraftEntityType.minecraftToBukkit(entity.getType());
+     }
+ 
++    // Purpur start - Fire Immunity API
++    @Override
++    public boolean isImmuneToFire() {
++        return getHandle().fireImmune();
++    }
++
++    @Override
++    public void setImmuneToFire(Boolean fireImmune) {
++        getHandle().immuneToFire = fireImmune;
++    }
++    // Purpur end - Fire Immunity API
++
++    // Purpur start - API for any mob to burn daylight
++    @Override
++    public boolean isInDaylight() {
++        return getHandle().isSunBurnTick();
++    }
++    // Purpur end - API for any mob to burn daylight
++
+     public static <T extends Entity> CraftEntity getEntity(CraftServer server, T entity) {
+         Preconditions.checkArgument(entity != null, "Unknown entity");
+ 
+@@ -249,6 +268,7 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+         boolean retainPassengers = flagSet.contains(io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS);
+         // Don't allow teleporting between worlds while keeping passengers
+         if (flagSet.contains(io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS) && this.entity.isVehicle() && location.getWorld() != this.getWorld()) {
++            if (!new org.purpurmc.purpur.event.entity.EntityTeleportHinderedEvent(entity.getBukkitEntity(), org.purpurmc.purpur.event.entity.EntityTeleportHinderedEvent.Reason.IS_VEHICLE, cause).callEvent()) // Purpur - Add EntityTeleportHinderedEvent
+             return false;
+         }
+ 
+@@ -1333,4 +1353,27 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+         }
+     }
+     // Paper end - broadcast hurt animation
++
++    // Purpur start - Ridables
++    @Override
++    public org.bukkit.entity.Player getRider() {
++        net.minecraft.world.entity.player.Player rider = getHandle().getRider();
++        return rider != null ? (org.bukkit.entity.Player) rider.getBukkitEntity() : null;
++    }
++
++    @Override
++    public boolean hasRider() {
++        return getHandle().getRider() != null;
++    }
++
++    @Override
++    public boolean isRidable() {
++        return getHandle().isRidable();
++    }
++
++    @Override
++    public boolean isRidableInWater() {
++        return !getHandle().dismountsUnderwater();
++    }
++    // Purpur end - Ridables
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftHumanEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftHumanEntity.java
+index a396157548a5b3c3e86206c35789bb40346c701c..469b99bede578b03a1b711b4404a88bf85d7e7ca 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftHumanEntity.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftHumanEntity.java
+@@ -281,6 +281,7 @@ public class CraftHumanEntity extends CraftLivingEntity implements HumanEntity {
+     @Override
+     public void recalculatePermissions() {
+         this.perm.recalculatePermissions();
++        getHandle().canPortalInstant = hasPermission("purpur.portal.instant"); // Purpur - Add portal permission bypass
+     }
+ 
+     @Override
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftIronGolem.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftIronGolem.java
+index 63cae1a2e95d8da17c45c4404a8dd0ca6a413c39..464a3713845548473a357ea66c6147b10ff2cb16 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftIronGolem.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftIronGolem.java
+@@ -27,4 +27,17 @@ public class CraftIronGolem extends CraftGolem implements IronGolem {
+     public void setPlayerCreated(boolean playerCreated) {
+         this.getHandle().setPlayerCreated(playerCreated);
+     }
++
++    // Purpur start - Summoner API
++    @Override
++    @org.jetbrains.annotations.Nullable
++    public java.util.UUID getSummoner() {
++        return getHandle().getSummoner();
++    }
++
++    @Override
++    public void setSummoner(@org.jetbrains.annotations.Nullable java.util.UUID summoner) {
++        getHandle().setSummoner(summoner);
++    }
++    // Purpur end - Summoner API
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftItem.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftItem.java
+index 7a3d982b133f8cdaeb936cf40f92565f0f7f6dd0..8b0faa08411ee1f336641b161acd3412c886dc2b 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftItem.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftItem.java
+@@ -151,4 +151,53 @@ public class CraftItem extends CraftEntity implements Item {
+     public String toString() {
+         return "CraftItem";
+     }
++
++    // Purpur start - Item entity immunities
++    @Override
++    public void setImmuneToCactus(boolean immuneToCactus) {
++        this.getHandle().immuneToCactus = immuneToCactus;
++    }
++
++    @Override
++    public boolean isImmuneToCactus() {
++        return this.getHandle().immuneToCactus;
++    }
++
++    @Override
++    public void setImmuneToExplosion(boolean immuneToExplosion) {
++        this.getHandle().immuneToExplosion = immuneToExplosion;
++    }
++
++    @Override
++    public boolean isImmuneToExplosion() {
++        return this.getHandle().immuneToExplosion;
++    }
++
++    // Purpur start - Fire Immunity API
++    @Override
++    public void setImmuneToFire(@org.jetbrains.annotations.Nullable Boolean immuneToFire) {
++        this.getHandle().immuneToFire = (immuneToFire != null && immuneToFire);
++    }
++    // Purpur end - Fire Immunity API
++
++    @Override
++    public void setImmuneToFire(boolean immuneToFire) {
++        this.setImmuneToFire((Boolean) immuneToFire); // Purpur - Fire Immunity API
++    }
++
++    @Override
++    public boolean isImmuneToFire() {
++        return this.getHandle().immuneToFire;
++    }
++
++    @Override
++    public void setImmuneToLightning(boolean immuneToLightning) {
++        this.getHandle().immuneToLightning = immuneToLightning;
++    }
++
++    @Override
++    public boolean isImmuneToLightning() {
++        return this.getHandle().immuneToLightning;
++    }
++    // Purpur end - Item entity immunities
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
+index 4f98d138a275a6c34528b7a5148ef265bc38d6b5..3a9d9b7526b2bf0fbd4e0d7886b3d849a6dcfee9 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
+@@ -523,7 +523,7 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
+         net.minecraft.server.level.ServerPlayer entityPlayer = killer == null ? null : ((CraftPlayer) killer).getHandle();
+         getHandle().lastHurtByPlayer = entityPlayer;
+         getHandle().lastHurtByMob = entityPlayer;
+-        getHandle().lastHurtByPlayerTime = entityPlayer == null ? 0 : 100; // 100 value taken from EntityLiving#damageEntity
++        getHandle().lastHurtByPlayerTime = entityPlayer == null ? 0 : getHandle().level().purpurConfig.mobLastHurtByPlayerTime; // 100 value taken from EntityLiving#damageEntity // Purpur - Config for mob last hurt by player time
+     }
+     // Paper end
+ 
+@@ -1211,4 +1211,16 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
+         return this.getHandle().canUseSlot(org.bukkit.craftbukkit.CraftEquipmentSlot.getNMS(slot));
+     }
+     // Paper end - Expose canUseSlot
++
++    // Purpur start - API for any mob to burn daylight
++    @Override
++    public boolean shouldBurnInDay() {
++        return this.getHandle().shouldBurnInDay();
++    }
++
++    @Override
++    public void setShouldBurnInDay(final boolean shouldBurnInDay) {
++        this.getHandle().setShouldBurnInDay(shouldBurnInDay);
++    }
++    // Purpur end - API for any mob to burn daylight
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftLlama.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftLlama.java
+index 351f42842b780d053cd2e5bad9ae299449141b10..054d2c2b93c43faeeaf56f482eb7b9431a6190df 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftLlama.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftLlama.java
+@@ -90,4 +90,16 @@ public class CraftLlama extends CraftChestedHorse implements Llama, com.destroys
+         return this.getHandle().caravanTail == null ? null : (Llama) this.getHandle().caravanTail.getBukkitEntity();
+     }
+     // Paper end
++
++    // Purpur start - Llama API
++    @Override
++    public boolean shouldJoinCaravan() {
++        return getHandle().shouldJoinCaravan;
++    }
++
++    @Override
++    public void setShouldJoinCaravan(boolean shouldJoinCaravan) {
++        getHandle().shouldJoinCaravan = shouldJoinCaravan;
++    }
++    // Purpur end - Llama API
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+index 98fc89cc7a715d35b62e13f8ecbe56c05605ca64..9fbbdc9664353fd2be8eae112e5cfe8880d51d08 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+@@ -585,10 +585,15 @@ public class CraftPlayer extends CraftHumanEntity implements Player {
+ 
+     @Override
+     public void setPlayerListName(String name) {
++        // Purpur start - AFK API
++        setPlayerListName(name, false);
++    }
++    public void setPlayerListName(String name, boolean useMM) {
++        // Purpur end - AFK API
+         if (name == null) {
+             name = this.getName();
+         }
+-        this.getHandle().listName = name.equals(this.getName()) ? null : CraftChatMessage.fromStringOrNull(name);
++        this.getHandle().listName = name.equals(this.getName()) ? null : useMM ? io.papermc.paper.adventure.PaperAdventure.asVanilla(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(name)) : CraftChatMessage.fromStringOrNull(name); // Purpur - AFK API
+         if (this.getHandle().connection == null) return; // Paper - Updates are possible before the player has fully joined
+         for (ServerPlayer player : (List<ServerPlayer>) this.server.getHandle().players) {
+             if (player.getBukkitEntity().canSee(this)) {
+@@ -1426,6 +1431,7 @@ public class CraftPlayer extends CraftHumanEntity implements Player {
+         // Paper start - Teleport passenger API
+         // Don't allow teleporting between worlds while keeping passengers
+         if (ignorePassengers && entity.isVehicle() && location.getWorld() != this.getWorld()) {
++            if (!new org.purpurmc.purpur.event.entity.EntityTeleportHinderedEvent(entity.getBukkitEntity(), org.purpurmc.purpur.event.entity.EntityTeleportHinderedEvent.Reason.IS_VEHICLE, cause).callEvent()) // Purpur - Add EntityTeleportHinderedEvent
+             return false;
+         }
+ 
+@@ -1447,6 +1453,7 @@ public class CraftPlayer extends CraftHumanEntity implements Player {
+         }
+ 
+         if (entity.isVehicle() && !ignorePassengers) { // Paper - Teleport API
++            if (!new org.purpurmc.purpur.event.entity.EntityTeleportHinderedEvent(entity.getBukkitEntity(), org.purpurmc.purpur.event.entity.EntityTeleportHinderedEvent.Reason.IS_VEHICLE, cause).callEvent()) // Purpur - Add EntityTeleportHinderedEvent
+             return false;
+         }
+ 
+@@ -2745,6 +2752,28 @@ public class CraftPlayer extends CraftHumanEntity implements Player {
+         return this.getHandle().getAbilities().walkingSpeed * 2f;
+     }
+ 
++    // Purpur start - OfflinePlayer API
++    @Override
++    public boolean teleportOffline(@NotNull Location destination) {
++        return this.teleport(destination);
++    }
++
++    @Override
++    public boolean teleportOffline(Location destination, PlayerTeleportEvent.TeleportCause cause) {
++        return this.teleport(destination, cause);
++    }
++
++    @Override
++    public java.util.concurrent.CompletableFuture<Boolean> teleportOfflineAsync(@NotNull Location destination) {
++        return this.teleportAsync(destination);
++    }
++
++    @Override
++    public java.util.concurrent.CompletableFuture<Boolean> teleportOfflineAsync(@NotNull Location destination, PlayerTeleportEvent.TeleportCause cause) {
++        return this.teleportAsync(destination, cause);
++    }
++    // Purpur end - OfflinePlayer API
++
+     private void validateSpeed(float value) {
+         Preconditions.checkArgument(value <= 1f && value >= -1f, "Speed value (%s) need to be between -1f and 1f", value);
+     }
+@@ -3541,4 +3570,74 @@ public class CraftPlayer extends CraftHumanEntity implements Player {
+         this.getHandle().connection.send(new net.minecraft.network.protocol.game.ClientboundEntityEventPacket(((CraftEntity) target).getHandle(), effect.getData()));
+     }
+     // Paper end - entity effect API
++    // Purpur start - Purpur client support
++    @Override
++    public boolean usesPurpurClient() {
++        return getHandle().purpurClient;
++    }
++    // Purpur end - Purpur client support
++    // Purpur start - AFK API
++    @Override
++    public boolean isAfk() {
++        return getHandle().isAfk();
++    }
++
++    @Override
++    public void setAfk(boolean setAfk) {
++        getHandle().setAfk(setAfk);
++    }
++
++    @Override
++    public void resetIdleTimer() {
++        getHandle().resetLastActionTime();
++    }
++    // Purpur end - AFK API
++
++    // Purpur start - Debug Marker API
++    @Override
++    public void sendBlockHighlight(Location location, int duration) {
++        sendBlockHighlight(location, duration, "", 0x6400FF00);
++    }
++
++    @Override
++    public void sendBlockHighlight(Location location, int duration, int argb) {
++        sendBlockHighlight(location, duration, "", argb);
++    }
++
++    @Override
++    public void sendBlockHighlight(Location location, int duration, String text) {
++        sendBlockHighlight(location, duration, text, 0x6400FF00);
++    }
++
++    @Override
++    public void sendBlockHighlight(Location location, int duration, String text, int argb) {
++        if (this.getHandle().connection == null) return;
++        this.getHandle().connection.send(new net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket(new net.minecraft.network.protocol.common.custom.GameTestAddMarkerDebugPayload(io.papermc.paper.util.MCUtil.toBlockPosition(location), argb, text, duration)));
++    }
++
++    @Override
++    public void sendBlockHighlight(Location location, int duration, org.bukkit.Color color, int transparency) {
++        sendBlockHighlight(location, duration, "", color, transparency);
++    }
++
++    @Override
++    public void sendBlockHighlight(Location location, int duration, String text, org.bukkit.Color color, int transparency) {
++        if (transparency < 0 || transparency > 255) throw new IllegalArgumentException("transparency is outside of 0-255 range");
++        sendBlockHighlight(location, duration, text, transparency << 24 | color.asRGB());
++    }
++
++    @Override
++    public void clearBlockHighlights() {
++        if (this.getHandle().connection == null) return;
++        this.getHandle().connection.send(new net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket(new net.minecraft.network.protocol.common.custom.GameTestClearMarkersDebugPayload()));
++    }
++    // Purpur end - Debug Marker API
++
++    // Purpur start - Death screen API
++    @Override
++    public void sendDeathScreen(net.kyori.adventure.text.Component message) {
++        if (this.getHandle().connection == null) return;
++        this.getHandle().connection.send(new net.minecraft.network.protocol.game.ClientboundPlayerCombatKillPacket(getEntityId(), io.papermc.paper.adventure.PaperAdventure.asVanilla(message)));
++    }
++    // Purpur end - Death screen API
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftSnowman.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftSnowman.java
+index 4ce2373ff71c3c1b8951646e057587a3ab09e145..997b8e5059569de4ee8e70127c5d6019ce53afe3 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftSnowman.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftSnowman.java
+@@ -28,4 +28,17 @@ public class CraftSnowman extends CraftGolem implements Snowman, com.destroystok
+     public String toString() {
+         return "CraftSnowman";
+     }
++
++    // Purpur start - Summoner API
++    @Override
++    @org.jetbrains.annotations.Nullable
++    public java.util.UUID getSummoner() {
++        return getHandle().getSummoner();
++    }
++
++    @Override
++    public void setSummoner(@org.jetbrains.annotations.Nullable java.util.UUID summoner) {
++        getHandle().setSummoner(summoner);
++    }
++    // Purpur end - Summoner API
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftVillager.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftVillager.java
+index aaddce10e1d41531939d1e7f3d717b458ec1b7ab..d65a3bee4671e9e21769ba03f5e65c7312b23580 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftVillager.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftVillager.java
+@@ -373,4 +373,11 @@ public class CraftVillager extends CraftAbstractVillager implements Villager {
+         getHandle().getGossips().gossips.clear();
+     }
+     // Paper end
++
++    // Purpur start - Lobotomize stuck villagers
++    @Override
++    public boolean isLobotomized() {
++        return getHandle().isLobotomized();
++    }
++    // Purpur end - Lobotomize stuck villagers
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftWither.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftWither.java
+index 7881c6253c1d652c0c0d54a9a8accdf0a1ff0f3e..fe8be71121324f64346174922c7bc7f5d3a9de69 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftWither.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftWither.java
+@@ -99,4 +99,17 @@ public class CraftWither extends CraftMonster implements Wither, com.destroystok
+         this.getHandle().makeInvulnerable();
+     }
+     // Paper end
++
++    // Purpur start - Summoner API
++    @Override
++    @org.jetbrains.annotations.Nullable
++    public java.util.UUID getSummoner() {
++        return getHandle().getSummoner();
++    }
++
++    @Override
++    public void setSummoner(@org.jetbrains.annotations.Nullable java.util.UUID summoner) {
++        getHandle().setSummoner(summoner);
++    }
++    // Purpur end - Summoner API
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftWolf.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftWolf.java
+index c1b7f1281fbd41e765d2c1881763ca25b20e924d..53c620e717d39ef16f44c9697ac4809ac1fdfa6a 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftWolf.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftWolf.java
+@@ -145,4 +145,15 @@ public class CraftWolf extends CraftTameableAnimal implements Wolf {
+             return this.getKey().hashCode();
+         }
+     }
++    // Purpur start - Configurable chance for wolves to spawn rabid
++    @Override
++    public boolean isRabid() {
++        return getHandle().isRabid();
++    }
++
++    @Override
++    public void setRabid(boolean isRabid) {
++        getHandle().setRabid(isRabid);
++    }
++    // Purpur end - Configurable chance for wolves to spawn rabid
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+index d7a52220e9525502163f5ee6afbadf2baaae6190..1b7fdbecf9c28732d5196236980e87fa737a0769 100644
+--- a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
++++ b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+@@ -602,6 +602,15 @@ public class CraftEventFactory {
+         // Paper end
+         craftServer.getPluginManager().callEvent(event);
+ 
++        // Purpur start - Ridables
++        if (who != null) {
++            switch (action) {
++                case LEFT_CLICK_BLOCK, LEFT_CLICK_AIR -> who.processClick(InteractionHand.MAIN_HAND);
++                case RIGHT_CLICK_BLOCK, RIGHT_CLICK_AIR -> who.processClick(InteractionHand.OFF_HAND);
++            }
++        }
++        // Purpur end - Ridables
++
+         return event;
+     }
+ 
+@@ -1131,7 +1140,7 @@ public class CraftEventFactory {
+             return CraftEventFactory.callEntityDamageEvent(source.getDirectBlock(), source.getDirectBlockState(), entity, DamageCause.LAVA, bukkitDamageSource, modifiers, modifierFunctions, cancelled);
+         } else if (source.getDirectBlock() != null) {
+             DamageCause cause;
+-            if (source.is(DamageTypes.CACTUS) || source.is(DamageTypes.SWEET_BERRY_BUSH) || source.is(DamageTypes.STALAGMITE) || source.is(DamageTypes.FALLING_STALACTITE) || source.is(DamageTypes.FALLING_ANVIL)) {
++            if (source.is(DamageTypes.CACTUS) || source.is(DamageTypes.SWEET_BERRY_BUSH) || source.is(DamageTypes.STALAGMITE) || source.is(DamageTypes.FALLING_STALACTITE) || source.is(DamageTypes.FALLING_ANVIL) || source.isStonecutter()) { // Purpur - Stonecutter damage
+                 cause = DamageCause.CONTACT;
+             } else if (source.is(DamageTypes.HOT_FLOOR)) {
+                 cause = DamageCause.HOT_FLOOR;
+@@ -1191,6 +1200,7 @@ public class CraftEventFactory {
+         EntityDamageEvent event;
+         if (damager != null) {
+             event = new EntityDamageByEntityEvent(damager.getBukkitEntity(), damagee.getBukkitEntity(), cause, bukkitDamageSource, modifiers, modifierFunctions, critical);
++            damager.processClick(InteractionHand.MAIN_HAND); // Purpur - Ridables
+         } else {
+             event = new EntityDamageEvent(damagee.getBukkitEntity(), cause, bukkitDamageSource, modifiers, modifierFunctions);
+         }
+diff --git a/src/main/java/org/bukkit/craftbukkit/inventory/CraftContainer.java b/src/main/java/org/bukkit/craftbukkit/inventory/CraftContainer.java
+index 1ce328bed5cf3d087a3f7dc9236153381d758493..364afc994443f6c64af4f9ebbe210da63e18681c 100644
+--- a/src/main/java/org/bukkit/craftbukkit/inventory/CraftContainer.java
++++ b/src/main/java/org/bukkit/craftbukkit/inventory/CraftContainer.java
+@@ -145,8 +145,19 @@ public class CraftContainer extends AbstractContainerMenu {
+             case PLAYER:
+             case CHEST:
+             case ENDER_CHEST:
++                // Purpur start - Barrels and enderchests 6 rows
++                this.delegate = new ChestMenu(org.purpurmc.purpur.PurpurConfig.enderChestSixRows ? net.minecraft.world.inventory.MenuType.GENERIC_9x6 : net.minecraft.world.inventory.MenuType.GENERIC_9x3, windowId, bottom, top, top.getContainerSize() / 9);
++                break;
+             case BARREL:
+-                this.delegate = new ChestMenu(net.minecraft.world.inventory.MenuType.GENERIC_9x3, windowId, bottom, top, top.getContainerSize() / 9);
++                this.delegate = new ChestMenu(switch (org.purpurmc.purpur.PurpurConfig.barrelRows) {
++                    case 6 -> net.minecraft.world.inventory.MenuType.GENERIC_9x6;
++                    case 5 -> net.minecraft.world.inventory.MenuType.GENERIC_9x5;
++                    case 4 -> net.minecraft.world.inventory.MenuType.GENERIC_9x4;
++                    case 2 -> net.minecraft.world.inventory.MenuType.GENERIC_9x2;
++                    case 1 -> net.minecraft.world.inventory.MenuType.GENERIC_9x1;
++                    default -> net.minecraft.world.inventory.MenuType.GENERIC_9x3;
++                }, windowId, bottom, top, top.getContainerSize() / 9);
++                // Purpur end - Barrels and enderchests 6 rows
+                 break;
+             case DISPENSER:
+             case DROPPER:
+diff --git a/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventory.java b/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventory.java
+index c6159c70f7a37b9bffe268b91905ce848d1d2927..8b4f8a475faafe3b8a479160888145c4aa603a27 100644
+--- a/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventory.java
++++ b/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventory.java
+@@ -84,7 +84,7 @@ public class CraftInventory implements Inventory {
+ 
+     @Override
+     public void setContents(ItemStack[] items) {
+-        Preconditions.checkArgument(items.length <= this.getSize(), "Invalid inventory size (%s); expected %s or less", items.length, this.getSize());
++        // Preconditions.checkArgument(items.length <= this.getSize(), "Invalid inventory size (%s); expected %s or less", items.length, this.getSize()); // Purpur - Barrels and enderchests 6 rows
+ 
+         for (int i = 0; i < this.getSize(); i++) {
+             if (i >= items.length) {
+diff --git a/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryAnvil.java b/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryAnvil.java
+index 792cb6adf0c7a6335cc5985fce8bed2e0f1149af..5734c5caffda79383ae30df20c3defb51b87f39e 100644
+--- a/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryAnvil.java
++++ b/src/main/java/org/bukkit/craftbukkit/inventory/CraftInventoryAnvil.java
+@@ -19,6 +19,10 @@ public class CraftInventoryAnvil extends CraftResultInventory implements AnvilIn
+     private int repairCost;
+     private int repairCostAmount;
+     private int maximumRepairCost;
++    // Purpur start - Anvil API
++    private boolean bypassCost;
++    private boolean canDoUnsafeEnchants;
++    // Purpur end - Anvil API
+ 
+     public CraftInventoryAnvil(Location location, Container inventory, Container resultInventory) {
+         super(inventory, resultInventory);
+@@ -27,6 +31,10 @@ public class CraftInventoryAnvil extends CraftResultInventory implements AnvilIn
+         this.repairCost = CraftInventoryAnvil.DEFAULT_REPAIR_COST;
+         this.repairCostAmount = CraftInventoryAnvil.DEFAULT_REPAIR_COST_AMOUNT;
+         this.maximumRepairCost = CraftInventoryAnvil.DEFAULT_MAXIMUM_REPAIR_COST;
++        // Purpur start - Anvil API
++        this.bypassCost = false;
++        this.canDoUnsafeEnchants = false;
++        // Purpur end - Anvil API
+     }
+ 
+     @Override
+@@ -113,4 +121,30 @@ public class CraftInventoryAnvil extends CraftResultInventory implements AnvilIn
+             consumer.accept(cav);
+         }
+     }
++
++    // Purpur start - Anvil API
++    @Override
++    public boolean canBypassCost() {
++        this.syncWithArbitraryViewValue((cav) -> this.bypassCost = cav.canBypassCost());
++        return this.bypassCost;
++    }
++
++    @Override
++    public void setBypassCost(boolean bypassCost) {
++        this.bypassCost = bypassCost;
++        this.syncViews((cav) -> cav.setBypassCost(bypassCost));
++    }
++
++    @Override
++    public boolean canDoUnsafeEnchants() {
++        this.syncWithArbitraryViewValue((cav) -> this.canDoUnsafeEnchants = cav.canDoUnsafeEnchants());
++        return this.canDoUnsafeEnchants;
++    }
++
++    @Override
++    public void setDoUnsafeEnchants(boolean canDoUnsafeEnchants) {
++        this.canDoUnsafeEnchants = canDoUnsafeEnchants;
++        this.syncViews((cav) -> cav.setDoUnsafeEnchants(canDoUnsafeEnchants));
++    }
++    // Purpur end - Anvil API
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/inventory/CraftItemStack.java b/src/main/java/org/bukkit/craftbukkit/inventory/CraftItemStack.java
+index 3799973696eabbdc992bee4ff24175fc28ec8d7c..ae68b1d72be45503acc8c7a52b20d95d7b651f06 100644
+--- a/src/main/java/org/bukkit/craftbukkit/inventory/CraftItemStack.java
++++ b/src/main/java/org/bukkit/craftbukkit/inventory/CraftItemStack.java
+@@ -666,4 +666,285 @@ public final class CraftItemStack extends ItemStack {
+     }
+ 
+     // Paper end - data component API
++
++    // Purpur start - ItemStack convenience methods
++    @Override
++    public String getDisplayName() {
++        return getItemMeta().getDisplayName();
++    }
++
++    @Override
++    public void setDisplayName(String name) {
++        ItemMeta itemMeta = getItemMeta();
++        itemMeta.setDisplayName(name);
++        setItemMeta(itemMeta);
++    }
++
++    @Override
++    public boolean hasDisplayName() {
++        return hasItemMeta() && getItemMeta().hasDisplayName();
++    }
++
++    @Override
++    public String getLocalizedName() {
++        return getItemMeta().getLocalizedName();
++    }
++
++    @Override
++    public void setLocalizedName(String name) {
++        ItemMeta itemMeta = getItemMeta();
++        itemMeta.setLocalizedName(name);
++        setItemMeta(itemMeta);
++    }
++
++    @Override
++    public boolean hasLocalizedName() {
++        return hasItemMeta() && getItemMeta().hasLocalizedName();
++    }
++
++    @Override
++    public boolean hasLore() {
++        return hasItemMeta() && getItemMeta().hasLore();
++    }
++
++    @Override
++    public boolean hasEnchant(Enchantment ench) {
++        return hasItemMeta() && getItemMeta().hasEnchant(ench);
++    }
++
++    @Override
++    public int getEnchantLevel(Enchantment ench) {
++        return getItemMeta().getEnchantLevel(ench);
++    }
++
++    @Override
++    public Map<Enchantment, Integer> getEnchants() {
++        return getItemMeta().getEnchants();
++    }
++
++    @Override
++    public boolean addEnchant(Enchantment ench, int level, boolean ignoreLevelRestriction) {
++        ItemMeta itemMeta = getItemMeta();
++        boolean result = itemMeta.addEnchant(ench, level, ignoreLevelRestriction);
++        setItemMeta(itemMeta);
++        return result;
++    }
++
++    @Override
++    public boolean removeEnchant(Enchantment ench) {
++        ItemMeta itemMeta = getItemMeta();
++        boolean result = itemMeta.removeEnchant(ench);
++        setItemMeta(itemMeta);
++        return result;
++    }
++
++    @Override
++    public boolean hasEnchants() {
++        return hasItemMeta() && getItemMeta().hasEnchants();
++    }
++
++    @Override
++    public boolean hasConflictingEnchant(Enchantment ench) {
++        return hasItemMeta() && getItemMeta().hasConflictingEnchant(ench);
++    }
++
++    @Override
++    public void setCustomModelData(Integer data) {
++        ItemMeta itemMeta = getItemMeta();
++        itemMeta.setCustomModelData(data);
++        setItemMeta(itemMeta);
++    }
++
++    @Override
++    public int getCustomModelData() {
++        return getItemMeta().getCustomModelData();
++    }
++
++    @Override
++    public boolean hasCustomModelData() {
++        return hasItemMeta() && getItemMeta().hasCustomModelData();
++    }
++
++    @Override
++    public boolean hasBlockData() {
++        return hasItemMeta() && ((org.bukkit.inventory.meta.BlockDataMeta) getItemMeta()).hasBlockData();
++    }
++
++    @Override
++    public org.bukkit.block.data.BlockData getBlockData(Material material) {
++        return ((org.bukkit.inventory.meta.BlockDataMeta) getItemMeta()).getBlockData(material);
++    }
++
++    @Override
++    public void setBlockData(org.bukkit.block.data.BlockData blockData) {
++        ItemMeta itemMeta = getItemMeta();
++        ((org.bukkit.inventory.meta.BlockDataMeta) itemMeta).setBlockData(blockData);
++        setItemMeta(itemMeta);
++    }
++
++    @Override
++    public int getRepairCost() {
++        return ((org.bukkit.inventory.meta.Repairable) getItemMeta()).getRepairCost();
++    }
++
++    @Override
++    public void setRepairCost(int cost) {
++        ItemMeta itemMeta = getItemMeta();
++        ((org.bukkit.inventory.meta.Repairable) itemMeta).setRepairCost(cost);
++        setItemMeta(itemMeta);
++    }
++
++    @Override
++    public boolean hasRepairCost() {
++        return hasItemMeta() && ((org.bukkit.inventory.meta.Repairable) getItemMeta()).hasRepairCost();
++    }
++
++    @Override
++    public boolean isUnbreakable() {
++        return hasItemMeta() && getItemMeta().isUnbreakable();
++    }
++
++    @Override
++    public void setUnbreakable(boolean unbreakable) {
++        ItemMeta itemMeta = getItemMeta();
++        itemMeta.setUnbreakable(unbreakable);
++        setItemMeta(itemMeta);
++    }
++
++    @Override
++    public boolean hasAttributeModifiers() {
++        return hasItemMeta() && getItemMeta().hasAttributeModifiers();
++    }
++
++    @Override
++    public com.google.common.collect.Multimap<org.bukkit.attribute.Attribute, org.bukkit.attribute.AttributeModifier> getAttributeModifiers() {
++        return getItemMeta().getAttributeModifiers();
++    }
++
++    @Override
++    public com.google.common.collect.Multimap<org.bukkit.attribute.Attribute, org.bukkit.attribute.AttributeModifier> getAttributeModifiers(org.bukkit.inventory.EquipmentSlot slot) {
++        return getItemMeta().getAttributeModifiers(slot);
++    }
++
++    @Override
++    public java.util.Collection<org.bukkit.attribute.AttributeModifier> getAttributeModifiers(org.bukkit.attribute.Attribute attribute) {
++        return getItemMeta().getAttributeModifiers(attribute);
++    }
++
++    @Override
++    public boolean addAttributeModifier(org.bukkit.attribute.Attribute attribute, org.bukkit.attribute.AttributeModifier modifier) {
++        ItemMeta itemMeta = getItemMeta();
++        boolean result = itemMeta.addAttributeModifier(attribute, modifier);
++        setItemMeta(itemMeta);
++        return result;
++    }
++
++    @Override
++    public void setAttributeModifiers(com.google.common.collect.Multimap<org.bukkit.attribute.Attribute, org.bukkit.attribute.AttributeModifier> attributeModifiers) {
++        ItemMeta itemMeta = getItemMeta();
++        itemMeta.setAttributeModifiers(attributeModifiers);
++        setItemMeta(itemMeta);
++    }
++
++    @Override
++    public boolean removeAttributeModifier(org.bukkit.attribute.Attribute attribute) {
++        ItemMeta itemMeta = getItemMeta();
++        boolean result = itemMeta.removeAttributeModifier(attribute);
++        setItemMeta(itemMeta);
++        return result;
++    }
++
++    @Override
++    public boolean removeAttributeModifier(org.bukkit.inventory.EquipmentSlot slot) {
++        ItemMeta itemMeta = getItemMeta();
++        boolean result = itemMeta.removeAttributeModifier(slot);
++        setItemMeta(itemMeta);
++        return result;
++    }
++
++    @Override
++    public boolean removeAttributeModifier(org.bukkit.attribute.Attribute attribute, org.bukkit.attribute.AttributeModifier modifier) {
++        ItemMeta itemMeta = getItemMeta();
++        boolean result = itemMeta.removeAttributeModifier(attribute, modifier);
++        setItemMeta(itemMeta);
++        return result;
++    }
++
++    @Override
++    public boolean hasDamage() {
++        return hasItemMeta() && ((org.bukkit.inventory.meta.Damageable) getItemMeta()).hasDamage();
++    }
++
++    @Override
++    public int getDamage() {
++        return ((org.bukkit.inventory.meta.Damageable) getItemMeta()).getDamage();
++    }
++
++    @Override
++    public void setDamage(int damage) {
++        ItemMeta itemMeta = getItemMeta();
++        ((org.bukkit.inventory.meta.Damageable) itemMeta).setDamage(damage);
++        setItemMeta(itemMeta);
++    }
++
++    @Override
++    public void repair() {
++        repair(1);
++    }
++
++    @Override
++    public boolean damage() {
++        return damage(1);
++    }
++
++    @Override
++    public void repair(int amount) {
++        damage(-amount);
++    }
++
++    @Override
++    public boolean damage(int amount) {
++        return damage(amount, false);
++    }
++
++    @Override
++    public boolean damage(int amount, boolean ignoreUnbreaking) {
++        org.bukkit.inventory.meta.Damageable damageable = (org.bukkit.inventory.meta.Damageable) getItemMeta();
++        if (amount > 0) {
++            int unbreaking = getEnchantLevel(Enchantment.UNBREAKING);
++            int reduce = 0;
++            for (int i = 0; unbreaking > 0 && i < amount; ++i) {
++                if (reduceDamage(java.util.concurrent.ThreadLocalRandom.current(), unbreaking)) {
++                    ++reduce;
++                }
++            }
++            amount -= reduce;
++            if (amount <= 0) {
++                return isBroke(damageable.getDamage());
++            }
++        }
++        int damage = damageable.getDamage() + amount;
++        damageable.setDamage(damage);
++        setItemMeta((ItemMeta) damageable);
++        return isBroke(damage);
++    }
++
++    private boolean isBroke(int damage) {
++        if (damage > getType().getMaxDurability()) {
++            if (getAmount() > 0) {
++                // ensure it "breaks"
++                setAmount(0);
++            }
++            return true;
++        }
++        return false;
++    }
++
++    private boolean reduceDamage(java.util.Random random, int unbreaking) {
++        if (getType().isArmor()) {
++            return random.nextFloat() < 0.6F;
++        }
++        return random.nextInt(unbreaking + 1) > 0;
++    }
++    // Purpur end - ItemStack convenience methods
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/inventory/CraftRecipe.java b/src/main/java/org/bukkit/craftbukkit/inventory/CraftRecipe.java
+index 4864e2016cb1d377425297fd1c52b383632cb59e..953d64d128a53eb9ec2ff55140dde5cb80326044 100644
+--- a/src/main/java/org/bukkit/craftbukkit/inventory/CraftRecipe.java
++++ b/src/main/java/org/bukkit/craftbukkit/inventory/CraftRecipe.java
+@@ -36,6 +36,7 @@ public interface CraftRecipe extends Recipe {
+             stack = Ingredient.of(((RecipeChoice.MaterialChoice) bukkit).getChoices().stream().map((mat) -> CraftItemType.bukkitToMinecraft(mat)));
+         } else if (bukkit instanceof RecipeChoice.ExactChoice) {
+             stack = Ingredient.ofStacks(((RecipeChoice.ExactChoice) bukkit).getChoices().stream().map((mat) -> CraftItemStack.asNMSCopy(mat)).toList());
++            stack.predicate = ((RecipeChoice.ExactChoice) bukkit).getPredicate(); // Purpur - Add predicate to recipe's ExactChoice ingredient
+             // Paper start - support "empty" choices - legacy method that spigot might incorrectly call
+             // Their impl of Ingredient.of() will error, ingredients need at least one entry.
+             // Callers running into this exception may have passed an incorrect empty() recipe choice to a non-empty slot or
+diff --git a/src/main/java/org/bukkit/craftbukkit/inventory/view/CraftAnvilView.java b/src/main/java/org/bukkit/craftbukkit/inventory/view/CraftAnvilView.java
+index f86c95a13dff012de5db3e41ac261e9e8d44d9f3..1db0b790d824e419bb5fb6ab1f3003e120f9763b 100644
+--- a/src/main/java/org/bukkit/craftbukkit/inventory/view/CraftAnvilView.java
++++ b/src/main/java/org/bukkit/craftbukkit/inventory/view/CraftAnvilView.java
+@@ -75,4 +75,26 @@ public class CraftAnvilView extends CraftInventoryView<AnvilMenu, AnvilInventory
+             this.setMaximumRepairCost(legacy.getMaximumRepairCost());
+         }
+     }
++
++    // Purpur start - Anvil API
++    @Override
++    public boolean canBypassCost() {
++        return this.container.bypassCost;
++    }
++
++    @Override
++    public void setBypassCost(boolean bypassCost) {
++        this.container.bypassCost = bypassCost;
++    }
++
++    @Override
++    public boolean canDoUnsafeEnchants() {
++        return this.container.canDoUnsafeEnchants;
++    }
++
++    @Override
++    public void setDoUnsafeEnchants(boolean canDoUnsafeEnchants) {
++        this.container.canDoUnsafeEnchants = canDoUnsafeEnchants;
++    }
++    // Purpur end - Anvil API
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/legacy/CraftLegacy.java b/src/main/java/org/bukkit/craftbukkit/legacy/CraftLegacy.java
+index 51ae8eddadc87b143b93521a3cef374f1e3a24dc..f7837a7f1988d86fd6da4be182c1ba6e69a89eb0 100644
+--- a/src/main/java/org/bukkit/craftbukkit/legacy/CraftLegacy.java
++++ b/src/main/java/org/bukkit/craftbukkit/legacy/CraftLegacy.java
+@@ -265,6 +265,7 @@ public final class CraftLegacy {
+     }
+ 
+     static {
++        if (!org.purpurmc.purpur.PurpurConfig.loggerSuppressInitLegacyMaterialError) // Purpur - Logger settings (suppressing pointless logs)
+         LOGGER.warn("Initializing Legacy Material Support. Unless you have legacy plugins and/or data this is a bug!"); // Paper - Improve logging and errors; doesn't need to be an error
+         if (MinecraftServer.getServer() != null && MinecraftServer.getServer().isDebugging()) {
+             new Exception().printStackTrace();
+diff --git a/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java b/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java
+index db8d8e2a07296d62c3097f02b03319e2e1ba9394..4ba4d52961b4ba61fe2db130ee4368ff358920d4 100644
+--- a/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java
++++ b/src/main/java/org/bukkit/craftbukkit/legacy/MaterialRerouting.java
+@@ -708,4 +708,32 @@ public class MaterialRerouting {
+         meta.setCanPlaceOn(materials);
+     }
+     // Paper end
++    // Purpur start - Adopt MaterialRerouting
++    // Method added post 1.13, no-op (https://github.com/PurpurMC/Purpur/pull/570)
++    public static void addFuel(Server server, Material material, int burnTime) {
++        server.addFuel(material, burnTime);
++    }
++
++    // Method added post 1.13, no-op (https://github.com/PurpurMC/Purpur/pull/570)
++    public static void removeFuel(Server server, Material material) {
++        server.removeFuel(material);
++    }
++
++    // Method added post 1.13, no-op (https://github.com/PurpurMC/Purpur/pull/570)
++    @RerouteStatic("org/bukkit/Bukkit")
++    public static void addFuel(Material material, int burnTime) {
++        Bukkit.addFuel(material, burnTime);
++    }
++
++    // Method added post 1.13, no-op (https://github.com/PurpurMC/Purpur/pull/570)
++    @RerouteStatic("org/bukkit/Bukkit")
++    public static void removeFuel(Material material) {
++        Bukkit.removeFuel(material);
++    }
++
++    // Method added post 1.13, no-op (https://github.com/PurpurMC/Purpur/commit/607d909efba516893072b782c0393c53d048210e)
++    public static BlockData getBlockData(ItemStack itemStack, Material material) {
++        return itemStack.getBlockData(MaterialRerouting.transformToBlockType(material));
++    }
++    // Purpur end - Adopt MaterialRerouting
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/map/CraftMapRenderer.java b/src/main/java/org/bukkit/craftbukkit/map/CraftMapRenderer.java
+index cf0920e5f84b35647882fb963e9972af4e8427e0..2949cd29c7fa707835044a4b61eae150df56296e 100644
+--- a/src/main/java/org/bukkit/craftbukkit/map/CraftMapRenderer.java
++++ b/src/main/java/org/bukkit/craftbukkit/map/CraftMapRenderer.java
+@@ -49,4 +49,10 @@ public class CraftMapRenderer extends MapRenderer {
+         }
+     }
+ 
++    // Purpur start - Explorer Map API
++    @Override
++    public boolean isExplorerMap() {
++        return this.worldMap.isExplorerMap;
++    }
++    // Purpur end - Explorer Map API
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/scheduler/CraftScheduler.java b/src/main/java/org/bukkit/craftbukkit/scheduler/CraftScheduler.java
+index 1354ccfbf525e5e64483ac5f443cc2325ba63850..2e7c3d4befeb6256ce81ecaa9ed4e8fbcb21651e 100644
+--- a/src/main/java/org/bukkit/craftbukkit/scheduler/CraftScheduler.java
++++ b/src/main/java/org/bukkit/craftbukkit/scheduler/CraftScheduler.java
+@@ -491,7 +491,7 @@ public class CraftScheduler implements BukkitScheduler {
+                 this.parsePending();
+             } else {
+                 // this.debugTail = this.debugTail.setNext(new CraftAsyncDebugger(this.currentTick + CraftScheduler.RECENT_TICKS, task.getOwner(), task.getTaskClass())); // Paper
+-                task.getOwner().getLogger().log(Level.SEVERE, "Unexpected Async Task in the Sync Scheduler. Report this to Paper"); // Paper
++                task.getOwner().getLogger().log(Level.SEVERE, "Unexpected Async Task in the Sync Scheduler. Report this to Purpur"); // Paper // Purpur - Rebrand
+                 // We don't need to parse pending
+                 // (async tasks must live with race-conditions if they attempt to cancel between these few lines of code)
+             }
+diff --git a/src/main/java/org/bukkit/craftbukkit/util/CraftMagicNumbers.java b/src/main/java/org/bukkit/craftbukkit/util/CraftMagicNumbers.java
+index bd8005cd3a52532f4cb2e123da473f1490b59dbb..f9d091463f4791459267e920d596e011f5af3f28 100644
+--- a/src/main/java/org/bukkit/craftbukkit/util/CraftMagicNumbers.java
++++ b/src/main/java/org/bukkit/craftbukkit/util/CraftMagicNumbers.java
+@@ -508,7 +508,7 @@ public final class CraftMagicNumbers implements UnsafeValues {
+     // Paper start
+     @Override
+     public com.destroystokyo.paper.util.VersionFetcher getVersionFetcher() {
+-        return new com.destroystokyo.paper.PaperVersionFetcher();
++        return new com.destroystokyo.paper.PaperVersionFetcher(); // Pufferfish // Purpur - Rebrand
+     }
+ 
+     @Override
+diff --git a/src/main/java/org/bukkit/craftbukkit/util/Versioning.java b/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
+index 774556a62eb240da42e84db4502e2ed43495be17..99eb04643fce44c37fd96c99756837ccafe7b559 100644
+--- a/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
++++ b/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
+@@ -11,7 +11,7 @@ public final class Versioning {
+     public static String getBukkitVersion() {
+         String result = "Unknown-Version";
+ 
+-        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/io.papermc.paper/paper-api/pom.properties");
++        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/org.purpurmc.purpur/purpur-api/pom.properties"); // Pufferfish // Purpur - Rebrand
+         Properties properties = new Properties();
+ 
+         if (stream != null) {
+diff --git a/src/main/java/org/bukkit/craftbukkit/util/permissions/CommandPermissions.java b/src/main/java/org/bukkit/craftbukkit/util/permissions/CommandPermissions.java
+index b3169c551b8410f5861f9db0543c785439ecba7c..377b6bdc80019f0c824c8fd35a8f228315bafe9f 100644
+--- a/src/main/java/org/bukkit/craftbukkit/util/permissions/CommandPermissions.java
++++ b/src/main/java/org/bukkit/craftbukkit/util/permissions/CommandPermissions.java
+@@ -23,7 +23,15 @@ public final class CommandPermissions {
+         DefaultPermissions.registerPermission(CommandPermissions.PREFIX + "kick", "Allows the user to kick players", PermissionDefault.OP, commands);
+         DefaultPermissions.registerPermission(CommandPermissions.PREFIX + "stop", "Allows the user to stop the server", PermissionDefault.OP, commands);
+         DefaultPermissions.registerPermission(CommandPermissions.PREFIX + "list", "Allows the user to list all online players", PermissionDefault.OP, commands);
+-        DefaultPermissions.registerPermission(CommandPermissions.PREFIX + "gamemode", "Allows the user to change the gamemode of another player", PermissionDefault.OP, commands);
++        // Purpur start - Gamemode extra permissions
++        Permission gamemodeVanilla = DefaultPermissions.registerPermission(PREFIX + "gamemode", "Allows the user to change the gamemode", PermissionDefault.OP, commands);
++        for (net.minecraft.world.level.GameType gametype : net.minecraft.world.level.GameType.values()) {
++            Permission gamemodeSelf = DefaultPermissions.registerPermission(PREFIX + "gamemode." + gametype.getName(), "Allows the user to set " + gametype.getName() + " gamemode for self", PermissionDefault.OP);
++            Permission gamemodeOther = DefaultPermissions.registerPermission(PREFIX + "gamemode." + gametype.getName() + ".other", "Allows the user to set " + gametype.getName() + " gamemode for other players", PermissionDefault.OP);
++            gamemodeSelf.addParent(gamemodeOther, true);
++            gamemodeVanilla.addParent(gamemodeSelf, true);
++        }
++        // Purpur end - Gamemode extra permissions
+         DefaultPermissions.registerPermission(CommandPermissions.PREFIX + "experience", "Allows the user to give themselves or others arbitrary values of experience", PermissionDefault.OP, commands); // Paper - wrong permission; redirects are de-redirected and the root literal name is used, so xp -> experience
+         DefaultPermissions.registerPermission(CommandPermissions.PREFIX + "defaultgamemode", "Allows the user to change the default gamemode of the server", PermissionDefault.OP, commands);
+         DefaultPermissions.registerPermission(CommandPermissions.PREFIX + "seed", "Allows the user to view the seed of the world", PermissionDefault.OP, commands);
+diff --git a/src/main/java/org/purpurmc/purpur/configuration/transformation/VoidDamageHeightMigration.java b/src/main/java/org/purpurmc/purpur/configuration/transformation/VoidDamageHeightMigration.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..a04d23bd98075cd65a24d4de8d18281d1668480f
+--- /dev/null
++++ b/src/main/java/org/purpurmc/purpur/configuration/transformation/VoidDamageHeightMigration.java
+@@ -0,0 +1,67 @@
++package org.purpurmc.purpur.configuration.transformation;
++
++import io.papermc.paper.configuration.Configurations;
++import io.papermc.paper.configuration.PaperConfigurations;
++import io.papermc.paper.configuration.type.number.DoubleOr;
++import java.util.OptionalDouble;
++import org.checkerframework.checker.nullness.qual.Nullable;
++import org.purpurmc.purpur.PurpurConfig;
++import org.spongepowered.configurate.ConfigurateException;
++import org.spongepowered.configurate.ConfigurationNode;
++import org.spongepowered.configurate.NodePath;
++import org.spongepowered.configurate.transformation.ConfigurationTransformation;
++import org.spongepowered.configurate.transformation.TransformAction;
++
++import static org.spongepowered.configurate.NodePath.path;
++
++public class VoidDamageHeightMigration implements TransformAction {
++
++    public static boolean HAS_BEEN_REGISTERED = false;
++
++    public static final String ENVIRONMENT_KEY = "environment";
++    public static final String VOID_DAMAGE_KEY = "void-damage-amount";
++    public static final String VOID_DAMAGE_MIN_HEIGHT_OFFSET_KEY = "void-damage-min-build-height-offset";
++    public static final double DEFAULT_VOID_DAMAGE_HEIGHT = -64.0D;
++    public static final double DEFAULT_VOID_DAMAGE = 4.0D;
++
++    private final String worldName;
++
++    private VoidDamageHeightMigration(String worldName) {
++        this.worldName = PaperConfigurations.WORLD_DEFAULTS.equals(worldName) ? "default" : worldName;
++    }
++
++    @Override
++    public Object @Nullable [] visitPath(final NodePath path, final ConfigurationNode value) throws ConfigurateException {
++        String purpurVoidDamageHeightPath = "world-settings." + this.worldName + ".gameplay-mechanics.void-damage-height";
++        ConfigurationNode voidDamageMinHeightOffsetNode = value.node(ENVIRONMENT_KEY, VOID_DAMAGE_MIN_HEIGHT_OFFSET_KEY);
++        if (PurpurConfig.config.contains(purpurVoidDamageHeightPath)) {
++            double purpurVoidDamageHeight = PurpurConfig.config.getDouble(purpurVoidDamageHeightPath);
++            if (purpurVoidDamageHeight != DEFAULT_VOID_DAMAGE_HEIGHT && (voidDamageMinHeightOffsetNode.empty() || voidDamageMinHeightOffsetNode.getDouble() == DEFAULT_VOID_DAMAGE_HEIGHT)) {
++                voidDamageMinHeightOffsetNode.raw(null);
++                voidDamageMinHeightOffsetNode.set(purpurVoidDamageHeight);
++            }
++            PurpurConfig.config.set(purpurVoidDamageHeightPath, null);
++        }
++
++        String purpurVoidDamagePath = "world-settings." + this.worldName + ".gameplay-mechanics.void-damage-dealt";
++        ConfigurationNode voidDamageNode = value.node(ENVIRONMENT_KEY, VOID_DAMAGE_KEY);
++        if (PurpurConfig.config.contains(purpurVoidDamagePath)) {
++            double purpurVoidDamage = PurpurConfig.config.getDouble(purpurVoidDamagePath);
++            if (purpurVoidDamage != DEFAULT_VOID_DAMAGE && (voidDamageNode.empty() || voidDamageNode.getDouble() == DEFAULT_VOID_DAMAGE)) {
++                voidDamageNode.raw(null);
++                voidDamageNode.set(new DoubleOr.Disabled(OptionalDouble.of(purpurVoidDamage)));
++            }
++            PurpurConfig.config.set(purpurVoidDamagePath, null);
++        }
++
++        return null;
++    }
++
++    public static void apply(final ConfigurationTransformation.Builder builder, final Configurations.ContextMap contextMap) {
++        if (PurpurConfig.version < 36) {
++            HAS_BEEN_REGISTERED = true;
++            builder.addAction(path(), new VoidDamageHeightMigration(contextMap.require(Configurations.WORLD_NAME)));
++        }
++    }
++
++}
+diff --git a/src/main/java/org/spigotmc/TicksPerSecondCommand.java b/src/main/java/org/spigotmc/TicksPerSecondCommand.java
+index 6d4851aa8c53793bfaf650f399fc5e2a98dbbb24..4f3bd0628c224bb2567ddb0d40d16d44b9a6e14d 100644
+--- a/src/main/java/org/spigotmc/TicksPerSecondCommand.java
++++ b/src/main/java/org/spigotmc/TicksPerSecondCommand.java
+@@ -43,7 +43,7 @@ public class TicksPerSecondCommand extends Command {
+         }
+ 
+         TextComponent.Builder builder = text();
+-        builder.append(text("TPS from last 1m, 5m, 15m: ", NamedTextColor.GOLD));
++        builder.append(text("TPS from last 5s, 1m, 5m, 15m: ", NamedTextColor.GOLD)); // Purpur - Add 5 second tps average in /tps
+         builder.append(Component.join(JoinConfiguration.commas(true), tpsAvg));
+         sender.sendMessage(builder.asComponent());
+         if (args.length > 0 && args[0].equals("mem") && sender.hasPermission("bukkit.command.tpsmemory")) {
+diff --git a/src/main/java/org/spigotmc/WatchdogThread.java b/src/main/java/org/spigotmc/WatchdogThread.java
+index a9339f59f81dff307317ae4afdff0dc296febcc9..6e1e1b45c178b8917cb63d62dec8538a7eb7aa1a 100644
+--- a/src/main/java/org/spigotmc/WatchdogThread.java
++++ b/src/main/java/org/spigotmc/WatchdogThread.java
+@@ -25,7 +25,7 @@ public class WatchdogThread extends Thread {
+     private volatile boolean stopping;
+ 
+     private WatchdogThread(long timeoutTime, boolean restart) {
+-        super("Paper Watchdog Thread");
++        super("Watchdog Thread"); // Purpur - use a generic name - Rebrand
+         this.timeoutTime = timeoutTime;
+         this.restart = restart;
+         this.earlyWarningEvery = Math.min(GlobalConfiguration.get().watchdog.earlyWarningEvery, timeoutTime); // Paper
+@@ -77,14 +77,14 @@ public class WatchdogThread extends Thread {
+                 if (isLongTimeout) {
+                     // Paper end
+                     logger.log(Level.SEVERE, "------------------------------");
+-                    logger.log(Level.SEVERE, "The server has stopped responding! This is (probably) not a Paper bug."); // Paper
++                    logger.log(Level.SEVERE, "The server has stopped responding! This is (probably) not a Purpur bug."); // Paper // Purpur - Rebrand
+                     logger.log(Level.SEVERE, "If you see a plugin in the Server thread dump below, then please report it to that author");
+                     logger.log(Level.SEVERE, "\t *Especially* if it looks like HTTP or MySQL operations are occurring");
+                     logger.log(Level.SEVERE, "If you see a world save or edit, then it means you did far more than your server can handle at once");
+                     logger.log(Level.SEVERE, "\t If this is the case, consider increasing timeout-time in spigot.yml but note that this will replace the crash with LARGE lag spikes");
+-                    logger.log(Level.SEVERE, "If you are unsure or still think this is a Paper bug, please report this to https://github.com/PaperMC/Paper/issues");
++                    logger.log(Level.SEVERE, "If you are unsure or still think this is a Purpur bug, please report this to https://github.com/PurpurMC/Purpur/issues"); // Purpur - Rebrand
+                     logger.log(Level.SEVERE, "Be sure to include ALL relevant console errors and Minecraft crash reports");
+-                    logger.log(Level.SEVERE, "Paper version: " + Bukkit.getServer().getVersion());
++                    logger.log(Level.SEVERE, "Purpur version: " + Bukkit.getServer().getVersion()); // Purpur - Rebrand
+ 
+                     if (net.minecraft.world.level.Level.lastPhysicsProblem != null) {
+                         logger.log(Level.SEVERE, "------------------------------");
+@@ -104,12 +104,12 @@ public class WatchdogThread extends Thread {
+                     }
+                     // Paper end
+                 } else {
+-                    logger.log(Level.SEVERE, "--- DO NOT REPORT THIS TO PAPER - THIS IS NOT A BUG OR A CRASH  - " + Bukkit.getServer().getVersion() + " ---");
++                    logger.log(Level.SEVERE, "--- DO NOT REPORT THIS TO PURPUR - THIS IS NOT A BUG OR A CRASH  - " + Bukkit.getServer().getVersion() + " ---"); // Purpur - Rebrand
+                     logger.log(Level.SEVERE, "The server has not responded for " + (currentTime - lastTick) / 1000 + " seconds! Creating thread dump");
+                 }
+                 // Paper end - Different message for short timeout
+                 logger.log(Level.SEVERE, "------------------------------");
+-                logger.log(Level.SEVERE, "Server thread dump (Look for plugins here before reporting to Paper!):"); // Paper
++                logger.log(Level.SEVERE, "Server thread dump (Look for plugins here before reporting to Purpur!):" ); // Paper // Purpur - Rebrand
+                 FeatureHooks.dumpAllChunkLoadInfo(MinecraftServer.getServer(), isLongTimeout); // Paper - log detailed tick information
+                 WatchdogThread.dumpThread(ManagementFactory.getThreadMXBean().getThreadInfo(MinecraftServer.getServer().serverThread.getId(), Integer.MAX_VALUE), logger);
+                 logger.log(Level.SEVERE, "------------------------------");
+@@ -122,7 +122,7 @@ public class WatchdogThread extends Thread {
+                         WatchdogThread.dumpThread(thread, logger);
+                     }
+                 } else {
+-                    logger.log(Level.SEVERE, "--- DO NOT REPORT THIS TO PAPER - THIS IS NOT A BUG OR A CRASH ---");
++                    logger.log(Level.SEVERE, "--- DO NOT REPORT THIS TO PURPUR - THIS IS NOT A BUG OR A CRASH ---"); // Purpur - Rebrand
+                 }
+ 
+                 logger.log(Level.SEVERE, "------------------------------");
+diff --git a/src/main/resources/log4j2.xml b/src/main/resources/log4j2.xml
+index d2a75850af9c6ad2aca66a5f994f1b587d73eac4..a056aa167887abef9e6d531a9edd2cda433567d2 100644
+--- a/src/main/resources/log4j2.xml
++++ b/src/main/resources/log4j2.xml
+@@ -2,7 +2,16 @@
+ <Configuration status="WARN" shutdownHook="disable">
+     <Appenders>
+         <Queue name="ServerGuiConsole">
+-            <PatternLayout pattern="[%d{HH:mm:ss} %level]: %msg{nolookups}%n" />
++            <!-- Purpur start - copied from TerminalConsole -->
++            <PatternLayout>
++                <LoggerNamePatternSelector defaultPattern="%highlightGUIError{[%d{HH:mm:ss} %level]: [%logger] %stripAnsi{%msg}%n%xEx{full}}">
++                    <!-- Log root, Minecraft, Mojang and Bukkit loggers without prefix -->
++                    <!-- Disable prefix for various plugins that bypass the plugin logger -->
++                    <PatternMatch key=",net.minecraft.,Minecraft,com.mojang.,com.sk89q.,ru.tehkode.,Minecraft.AWE"
++                                  pattern="%highlightGUIError{[%d{HH:mm:ss} %level]: %stripAnsi{%msg}%n%xEx{full}}" />
++                </LoggerNamePatternSelector>
++            </PatternLayout>
++            <!-- Purpur end -->
+         </Queue>
+         <TerminalConsole name="TerminalConsole">
+             <PatternLayout>
+diff --git a/src/main/resources/logo.png b/src/main/resources/logo.png
+index 8b924977b7886df9ab8790b1e4ff9b1c04a2af45..518591dd83289e041a16e2c2e7d7e7640d4b2e1b 100644
+GIT binary patch
+literal 9260
+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
+G8|43b__*%?
+
+literal 16900
+zcmaf)RZtymu&!}kXmDLfg1h^|-QC?ixG&s2I0Sch5AG1$U4m<HKb8ON+PC{+s^+4r
+zXQu0|uKD_XI#NkN5(S9>2?7EFMOsQs1p)$M^xuU52LS<5tyS|A0z!B~T1;5Y)8HZp
+zUh9YE!*I`C!>au1!lt}?^7%)ymXa9F0E8%U6cA@Hs@r2|t2YjT?MMEK&sF!xR;P(1
+zJxFf8OgT_&`%_^18f74-j~9B>_v*F_4QG7P$=~I&{g0k-!dKZ;dhG_Yv84aKQ7`JU
+zJ^ehid=1+b=_P#o97{5v??~H!^zyIS&U_=f-+Z&XS28Q#IuJUNE}ApzE+z8$<M**`
+zKIU!g_So>!_(s%I3_!)=jTdGmXzz2p&3&czvSwVkj_PR|SM`xDjT-m<)@wFKtJ!fY
+z+A9f&c$RQF&Z%Ui9@S9nRjlxMs@)Z5_OxNu^|5JS^tNFPeEv!Mp+fj^Yc}Scf482J
+z_jv2_UYgabd?1AMePOH(|ApkUIjM`|sON7?4||4r>}#l#)Nj}LPNV67U-a5cAqgk9
+z4hA)b1i?G`_{?Is2NgH3=G*Y_oV4G*#y>w?4I7fSpx2h|vD&hsqdFVmofnVkNpM8o
+zEDOkF7WVse0CrXXeH^X&Y+X5Ugeg(@8XVq_7ng<WSLc%Q<*-QIhnsE4;ZV;$Me+D-
+z6O+kzkagG!u1}sMYVY^UJljV<@ZpQ$9%*p>H%kQ4q8to@(w`VD%+t{VjBlZzMA{89
+z;%$e2aiD==VT$}%!%lBb<H%>Y3xicyog$jB!Djxd7vpR6bXArR{Oqv(5MfWsJg3Yy
+zcUpf<i*XRQ-u8j=yfnTAd<;#}0(9p_Mh7gx&!`jRA8$wFN#<^|FB1MW+fs1Cf@q-!
+zU3MIdBzL_H_z&sj^8+k=#YiQ^+$Ny8yzr0AeUGmYlYGdR`w9gb2Lx)?IbkwW&1DO6
+zooAoqd!IA{afAE)J$MNE8EDL($_Qb7^jY-Tsb5DMjT&SWxeu;&{9Cq-;QIVXkZ5c-
+zx=+LR*Y)a+RPIfjC{LhfzZvst38Sh@J6SdEVEDi(KywY$Y+}Jl1d*UV+;mz*KDAhz
+zh)mX?^+*da+?k?h8~OJJ8$%paIkEkT+36F4*KVjH2cBc6;=dfslN%vAZH(Uy{cQfN
+z<{05LX(3vHPxFA6xPb50ypE5TCZA6YBZ}<-$vEI%pfjQkh!CS-P8y7_5rEIXH{0%v
+zq%!E~hwvPQHvUZ?Ef@P@;F%J@*kGou23nY?0$xpm+NOfZ`fm2Ene6n`CX^hNmZavr
+z3T#cF-q`UEca4lZhb{Zv1|e5Gbiv~cN!HZn5QX1Ea4!8`@;BL;2G8GnVZc<^iZrFL
+zmLJcfN#-n&{j#vj3m1P~7JF`tq<;B|g<?0_V4;>*M1f-z9ik)<Z3n&ko3>^?H|-}`
+zxbJl0Xc<(adaW`;Xc^eA&$kJ4EZWH)dOO+mFzw;MBfNjA5<1ZP>E3RWzD|&L1WdK!
+z2k&T-AdM3|);yD$reQ{x9G{_#6R5f}9%tdjf-W#_wS$qa(*X;ot*Gkja`g1Q_eN^=
+z`0%;Ho3r-6zU-m(+)f%v8KxzXfn20UBXua$j&hd^L+a{0lv^F@IS92I<OY%c!ol*K
+zo*nMA<@|~EJJV<8>L#!_sffCl2&zHVp_~j(J1np!W5n69+~xPAJ6}_zBa%4jtFt9W
+z{@f*=wRJ|ZitBopGm<ha<ogQz0D}_=VefQ-dFzyrIj$n~KD=LR3L`)v>@A{J`xa&M
+z)PY`TF0^X2?f!}827nOWNuI-<r$5<TE%a{e3k373M9lQ%RHs%RSr)PVP<kxBXcZnm
+zgJm!x;g~C$@#FI_>}Ne-gU_A_rT89Qjihq3d_{Ugx}ge|kRq}v@?<-}sM1htR5<=}
+zI1L1)$lG(bP|&c#@>`Np6h0xGHe-S%SWq_<x4Dzlch(EG5BQ%Qqe)*6^zW6~@M``#
+zCDamY8s8Jaa~2g;DZ|q6lDf*tg~lJ!!^4{=$Wcp@h{Rq-YeCkqfsMBv=tV{(jCL{|
+z6J7V*FaUy2Q)|?Xlq6r!8)bWEQlPx2ux5Cg5uzT>O*_rH`M&)M5xj9Un#*HS!PqE5
+zISo-XF(NX8c$<8iK|uH&>qt?Q&-b}D+Tgr7t>MFp&WJTZFnPZ1>|RTVqu7iauEwTX
+zVJi3CHpH3>2eq__Ox+k#@Bzl=K|7STdhX7MT{c8Ce71~q9Y&PXH}*iaRuCUgMZj4H
+z)Q<sa+KPzRqz0O{-kXtzDagS<&%r}abao`SSO`yF|Lj?rpGDNntoJVWe}|8U>yHub
+z_qnc(rzc$MCNk878`Sofx_>n{BwDNL?TS=$RO_S6!R*Ey=`(aG@LbB{HGQ+@MqP=h
+zu&0VvO0ab!36xlai&*>Xc+6_xPmdSo9TasQ3?*TY!)%lYzD(AZ0HWie+au=#fiLo&
+zU+O6Y`-6UchQAZ*C2TI_f~f(2hrMt6KE)jP36+(ZZfle23Dx>Inkk_7xY0&pkp)+N
+z%^^0b-mA7bkD<)a8%J{cvSRJ2S;}#v9g(doR}TQ3QGy%7T$YWkQuW{|T0eu$!D%Gg
+zhIpru$xwR_h!F-%c~|@zigH-C2m<JnIbRGUJ`o+s{0B$0h@KfxTQq^K(h!%+wnmUZ
+z&+uH(<{{~AZ3;c1s&I>=8{D8VNnCdFPc6Rfz(8f#dDmuUW@`u=TQn?l6ex-ha;(``
+zrS1uS-(@|j8cS+#fW*WdM9k{Fbp6f|!@JL%Gh}@yEWnT<?~y(gdk!gF4iLczhzP8A
+z6eYZ;NxgqYm0WAz^WFy?M1rvTjaYzkZ-k9O0o`V+34a3+%6{bTw=UzMuGx9|_wc1E
+zlzJB;CAmRbWieMfkz)5Lx6QlXVJsZCW2NX66{xtNY`ok_u9t5`tiF2O8sRN|iIjwm
+zStm2P{thW%Q3u7>jE-<YhsXZGBt`Inuklb3vv0q7ty;K7T}G$@6MPS5K4N^c{Wc--
+z!(-|(z>DYfVpx0s5?hF9Qzi@Lf>~6Pm?DX{;HP^Q242(r1D1_=jrbppWF;PQk_!Ls
+zS?3Zy6SOYNhA^`C9Gr`$aM+kF+PqIpNc~b)YOTag^;@K{!LHyR#-D?kKh>QZn&JHs
+z(S}LQ;l-T8IWrlT$vDeig`Pf3fs);`cyZgTesw;vUk*#=1ZlB5zS``R@)U;`I^|DW
+z?`Wu5^KI6hZo2(M-a~zF#>3kiX?zjyY=f@)xk3s24jF8WN!RqnV5qMC{5IS-?p~l`
+z*Od<2Atam`NRWyKlq2%T>WdXRFci|p)_QD!{us*BG6#&@1J>-ygf`d(+Yt%AR?$|m
+zG2&h}ZNhe<x)?3<qMqjG%(&Ex)~h>;3iL&t-&Bo~bSQvwc_uqFF*q*u<%r&3Io&Jc
+z8X3Bs8jXqH@NHmV7BRmCYCHHs=Nrep*-}>qojz9eD&96O%Es8n$%gaSnOL~VE%6i@
+z&N;!@pfy%G7dw?+2y1|uMDE?45uzNTNB_7>aX);UvtG>N2^CK4jXJOIypMJdF8LKU
+zTYqIdp7&|wl19M2-A~xsFLDE9e-nocdK3)_YdtcQ)W%k7bx|ihJbIc=Z5ZyZ^yh9L
+zz(%H87tSJzNkw!4yq5hajBkYU#kO&cksLk7!K-`GO(iyvT=U{|HBlNQU1VB|)w$-~
+z!`vE~Br`P8J<1%ly9{1OIZc%XlCTOPAdcit!jhpR;%=Zn+J^5sT)?#vtC4a+pY5iB
+zJDz5Ru-Z>~+fH$VWPdd~FVQ(AT}O25HPC_wANYArttZij2ISLx>m75xSQO6+R*;0g
+zmeuq!90F_}HX%kFZpuj4@q)SDa3k?+Bb2PrSZjTt%acFjLT3$4HPduPZ4Sfv?#~)_
+z*x>rvxpNnXh2P;_1YzBnVcqa9VK{mn1MhEaK>}|FhPXm?dB28(cqh2<aQ(E5eBk$f
+zXhOu5zd5gn#=c+vTG>Ag&XIAnbGh%w38mufD688Vg0{`stk3i+PA1e~X7W%o(N09G
+z(V+dK5Ra`6>fQc$6V4g$Mc;jTrbmt|ZcfPDi&luFxnBGk{2GGnMACo~C5VWy9A^BK
+z%9O|VK>O{=o7e@%H==p}Gh9?4J3)S(^K@|@-bpGMlMM#a6u}N>;hDZ{$m0w+?{P+i
+zv!bb`WN0Gnx5bB0s;!iJeK(?<LJ-dXRu>O@&xo_Yr==8dbs9N^gw0u(XK<y5w?dyc
+z)a$+g&xyOCWn;D<z-4)I7QKFvmV)ZQ@wBYI#3q%m)W*lhSISyiCsazEGS1p8lE1)#
+z_^8FfD5K8oA3|kPpdN8v1L{mwC|fV!*`NrE)?hzJDcwO>a5#%g4gLt%5d9^x&bUp+
+zI*CuQXb^F)LGcsTq00ke&-aZbA7<pGjOF(_S|Pt5M)lu5W;92@!*xG|2lh*QeQxy~
+z$g!BuyQ8D9vma$My_5FGv532J!R?oH!Re~vD^o8a1UK~>b?Ow}kNZFJJuWYsoo#JJ
+zd^|iHd;0^2Lk8)L=de&2-C9OWIvMMW>WH|w6pe<w(C{@#n$-IGNY&KruO7Hu)T8vC
+z*muol#eb?iAulS}{q(0Y{Ez0Ya)G=5Wyw?cgMz+VY-tLjPQJb|z9k2(@WFTc)Ok2)
+zwsm$+w2;kT>Ak$qJ4MH%Wu;|h=~A6+4h{@J3knK0*pJ@vag9^60=vvWcI&Lb_(VX2
+zy)N7VOA=(g{REg_f)&_ekDo9i1vl8j0R0zl47}1}4kDqz)m%np1-97YCtx<!sT41J
+zaJTs_DdiJUL7Q}@LegMCL2ZF9>X^_8E<IMcJZHX3{+Yv$8*d!QPI)Zy<6{N3SZ2Y(
+zRHQnRbDzsDSYt-;?hd4D7AO=(Pd?VXhDTW<-~l7PGp?<CgEsMLp#f=K2gL1M^CDQY
+z2YE5P`rx>b1U&2>fjdHvFw8)9n=P<XR)vYwTQ}=fjxb9Dv{WAW=&PJ?Qd0Xk00<jz
+zJE+ilN7%&?0!w`K)fPCZi))*i)-kTY{*@khj$U3|wErJ%b?gHGck`onT`i&xz~QEN
+z`fI}tw%DtJ6F{2I8G-#PUVX+U6p;UNz)MLLE_qH4(ZTki+;mr_0Y;Hc9334!y}Tkx
+zpFe#J)=7Z*@<ezrJ%5$(vUJwZmBzt8JY<a)%2nYRbX&xN;ZW#NBQGE^aULLpcYtW2
+z_2r-Qj9iZR3E%CYD7d-t_J?B!#*(RS&T4!1-kxvq*sT)8$?63_#~NxKPqP5Lq;lys
+zK@UUv+ON<mTXIHE&(Haaxq>T=mS{*wNJdpIN5Au>lfU5v4<160<tyx?ddd-t5JQ-Q
+z#^Y&r#;SFi`y0$BoL(O;OpK&no{w^8i)C@Sd3Yk3Z?=!D?X$oO4toeT!H#f%v4wA{
+za7E|xN}k@{1^(|ZQu6ZR?(Uq^Vl4XY-(h!mcgxhuF^PzYbNP~2D1qypy#5)QwS8VB
+zNT#`WcWJf>teocH-d>QHxOk-7@IW}47m1u$uA~w=(B0jA`kk+l2DCPaOxmP~ndvI$
+zYkm8H%IFn;s^>pUrvz6NLyr<`Ro3Korg8A+&kfO!G6vn2h>XJTf5yvnnk!b`Vn06=
+zO|u}x(#U)>eRZq|c{Ep6$&^P+2{n)IUvm+$hJWpRp@dc$Pc5;};;;?#x;>0!Q&lV!
+z`h5GsX89Y7O)`a6U8!1!!`XBAGrQC|6pr$y?Yi~{n@H;dTYvsSV}Guzrbl=`^4UoI
+z8~S7M#L3iCl4D&LZY7p{pxhZgK`flMwzluNP~zogXL!BoNYnrwRFOn1!FLoBg%hgK
+zT2%$)cYHjmbW$l?<>3q586J5ELJKn1OZfwK6zZEGypC8YxWSi_nBA+Z_&{j*y_tMb
+z6C6(s<>8a1YQkTymwXrrI?Xm2Z(XHsp-_~6s;*Hc@MZxKw?mh=jIMvB--jM9zQDT5
+z_##%J(qN!>z*rOmA{Oc8*IOL7NzRt42R1uBo;?F>^ndx{qY!eko1xoqPknBbx`jeg
+zBK1!If?!CHwgxmCjWr7V)0^wAxV{-lm1HGp@U)MCwN_MeX3LZ*<Z=axg+87rNROr|
+zGk1Bt@5+qfq9O9P@jq{KmxjSJf5d$^x|QZ~Fy8QBT0N;L=b3Ha98v{T?!a<*H!Oco
+zIhX^3<(4C7)s0wzsf{-e=xaD8((gATq$_pC!Q52^`1G=JH%YOOh)Awkup!<3Bb&&D
+zPqzKKb`i}X@B=H-Bd~YbHMOEI@}9^-?1=1qlLdT_OT6u-ZGcf1-8B+SeEi66pT|r)
+zwEB=TP-zV1l#zO^!F#)9-6$r|HF`OsuObU}`MndmLi2gW$9S+oiWz#B5iP79o{6bK
+z6t&rf0~tYIu6;`z?!b$F5x-iubvO!}PG*C|1o8c0-4Tz?B1YV@ZWIor_al#w4Eg(_
+z$KQrUKc~@M4#5WlgcH^f4=o(+5mB;?FztPJgyXV#w8m61e_JT{jLWsH<2^Fyzkt-!
+zn7TS<xomEX_V#vPeqA-SfVb-bwBxnrN@KWa9OUPbdwNDVsU`%3zb*?Nw~g=NK-v3m
+zqybDJa|+12fG~a%)UilOSl3+gJO)Aw>jEL+Um3h1ahneA%41;uV#JudJYWnF4<<f7
+zzG9QWf!F;`AGBVZlQ7I&5}VcmCIs2hpQ8%N-OLGH-?tPW>o}yV;v9^YzeZ9DJPbxV
+zCaJ<J%(kHO^{0C0gfV8icm-@)esj>z8JMuzS|;y@^GISocc73^ZoFw_q)lcpJX%zS
+z?3#&5BtAW>(BMlU0{VA<|F{5pf0gcm5u<ioLW^c2W~^(c1nYDT?@BPLUBn{Kt~rr?
+zB|BshuqfYiwi_^7$beF+(_|Gm6pb6*46=?!a@CQozXRZ`;wAJY%541p%ki81znPfy
+z=$%(ueBbx#JD2|Oa?8+7exd?=;MxFGhrEe)2ufq>eT^9u0&(YN^<63?O&=!S{pn(`
+zLg_%W?ebF_1IK2E8}fXKJRN7Sd1NEd3=zE}{Ff-5<hkKhjL-603?!M*=!CN3Ajdtt
+zFHx$lpNhxfi2h+m%}kE>5EeRtg*n1;E66aMQp_*vt;2W-BHy(2b;Flg4sLL8j`MDJ
+zAbfu?@{0+Il12eRII46kiNKmt05><cmKj{M9Y888Rc2DYHcpi<g&%kjUiB@*`KV)i
+z#Fsvm&u^Vx_(p$zP`;Tr_Q_@N@e?y#jURaDNWq0<H65l6ZTcCMOR&h8Do(;m>iU=h
+z$<m-^Ib(-mPuCOhDM(sd%(&JmzB)m`re%hRt{Dmi$-qm&$ODM}woZ0d2QRdc)U|VI
+zesAe3mx|o3@cdkhnrPdhY4g*wTICkTcbOhTK3P<LCjlZ-2$(0!%T_5G*XqoLZ$W&2
+zoeX(H^9#lA<L$Z4c^{6n)cji}fZON6t{$Hr7TMy1hrjYG=tm8sQ*?wxW60O^^z$fe
+zwu_s6>)Irsw!hHw5wf7*gjxln_O`c8!(m4}pSsbqKLIVrd=!}5jW}+WPlzQ;+_e-&
+z?Dy<48J&+h3*<q_`1T<r8T08<b#zDwj5C{&*BATm8$AI5_4xE$TwKXVH&vW)g90Yp
+zT}^2-bk0N;#}&r&dzo!1C#EDxcK2(q%kRGq_L~;|B={e5pvha9PCrco6sNv2OYQJK
+z`KU!nh5QiLDT2-HCCe24(ww?TW|yAA|3*r^bDA*!6OvQ6=nEbsBqScI8A2Qpk4lN#
+zaG@CN%UZK-^psJ#8g25?Z51b+*lZma|2I8w&jZXbWo!TW589RPVSJC;OstCn<nM2-
+z2S+b{6C-xz(kY(1hP3h}VS&z)XyIEV^+!tGw?v{i%6E7{&OU<dW8`;_h(55cGGCZI
+z-}s)s^0#T>@LUmFxqzh_g>rb^`iEl)hiDf5($dZZJpaL!%i&d@Buf3+M~(|w0IKfQ
+za3X0Srk%nLvE~Ab9|gBtt2_H<(fw_Zha@}t^K>=dbE+8{uYX2|#N=bmI)Wc;T*rwV
+zwd<qQF5ZwXK5Ad`lnx=HAV`+CET<7}W!P7~L^1@?exSN;0g-qLIHlq6d9Y)-9`7sz
+zmD<xUW&V5W9@6p*v)UCq_9aWHcDBC6$RNAiJdaUdkxiRt@8+A5?3EuZ&nbZ~g04Qv
+z+N93Un>5A@i2kamPB6hHF1AG?W!pUo_~vz+3wdlN<%QSGe!5}^qJ59h?#udS@qUf7
+zv-9ZW<iY;T-pl*r_RYMakia7+7VXT5XUz=&=YC)>cl%ZgYEV62Ov?klP4Ypq+COVB
+zzbpQbKJ4p#FTFlCeU?M~M)FWg!L^__)A~q8ym6&0c0f4_^d1Qsf;q;YQPHwFTKQaY
+z@}^_vfdLrw7oSN5$O~22BEUP<N7?!egjAd%LV+GFBk%{yaT{IpneWzqjUui0h+&Vv
+zfWubT*yplpG>Fgd#kF2FBsIH_Toz2Nw=v^=tZBu!NT|Lp7qp(fZ&&7q@7C0rFJD6;
+z(%|4PztN>6GF#&@{I1tbNIIaALQ8ulFL8_Y1vGk-QMPKSZe0HpMtxgqkoct%kuq`w
+z#x-}Cb*!ytPr?%+STtAMUu{{K-N%@g062$UWI7UOQm3=mc9wknbhD2q<j>Ej-!b^P
+z%oYhuwx~lumz_3B^a7bYyyq-71@Fw*7ULPhNJocwr5CvLRsE<~sh>maF=R1p!hO**
+zh+7MfH?17kb@`xEls`270@5OICG>$(UstdYt%lJ^wwiJK8I1@$5SE2?UF-^CtL8@;
+zs4{#zGZBM@8f^QW&S9I{2Bl9>kdJkdQs6??R6c{5q%l*?6D-aNSM(>Zc4);q<1&7n
+zVSb1AZyvYG&77Xtb`dpP1hGZw+U_-uc%-;be&gSUcbi*hJ9V!?LnI5O4d&1TOrlrE
+z1<S+|>1&b|=uC<L8aTvvuX9dFVpk|m*IEmR0}GHqjEWingb*`V#YU;@E+Z@ZMRRAl
+zN_*h*ku5qb*cEQj6K-N_YpZ}w>!5&O5GB^zm!T#ncJ-bmy8|`YuXV_zy3)jPFmR0m
+zFLy&N`z42~p5XU|+fn|GAIE2AfPi3JbxB>QXQ+7$3m_ug7v}~qfMAh#5*_)0mSKO^
+z)R>_thix1PNC=^T>X5@o5Ik^s!>_0nb%0+Qu?l@fMu||fRMI8(eq@a06~$a6goXp4
+zTc(!CW&GU`Z?7*~C%0!|`Po;Y-B>bq8(=^Pt<rP<iQcM7$|SG7sZ1jRpJv=SL@y#*
+zEwQ#JwOl^vZ8pa4W0vb_HmmSKCN$E@LOP+5th*N)ua+rG_zVzH1RvJYNm52?iwQI#
+zW5#vU2r46D@>0w>CW3cOKf|^OmN3o|I)zb~mlpR!VZ<ufcwLW;>RWgf3r$DjB6U@%
+zJ!v9xOZ<+LBarT*ahaknq^miC#W^ANPQ%<$&RHDpEBCU_M(sbvsugC-mYh-fO{Sw9
+z2eEARzci;On#5;xRA{kHL-zc9^rxh(B6&XXZ*i0bo|+5(tR}B*i$>CjH@i(J`<5N<
+zm*!QawcKB`2qVVWN|!2bmCj+qMz_>lyQe41<ecu-<Bn%yzzizlEp*-=HX&5VRA7)-
+z4%2D>Uc6GYo8|ZmgRouOWH<`fPtitAzEwsVe{gYe@!;OmfY1hA^J^GP2Zh7jc0#tW
+zV;K{f-a2?ll{FjAo&kmu**_ByBXvrN+H7%pUgwrk*v>}T<%nfg$(O1#f`vAf;$Wwj
+zK4OU>ekZ7*cXG`zK^{1Jk?6U1Z!$nXMaDUqNo}Oc<%5yn3pWZ=j1+|nlh9DXMmgJp
+zw$>=#X^n__>L<R8p{2vFMsa-tMZAw+b!4w*{~Hs?ILY$MKb`ll%OHuFsPn@iLGzz&
+zr(<R$^>z7RpGg`FbOM{jMF-I&Mx~Gtq{nwcJ*VwE0OFOdSNksknPO9!AjUy9a^u};
+zl{GfA#HVPd<MtoQxnP@W)7b#^ViRq#kuCg}NnB>@8C*|vf;gcdLXrJL?MukrGr%c^
+z`dR^O=T^5*G@CU0fpX=d2?dv}l#Z}rvrURI+yrK9#ndWZg69>4-LW#tEa5!`s{Zgq
+z8R@zhQOojaXAAXjJW6}a5>uV1LhgG$u5JQ_EBF0C=A-S5S2BuoH^CBy68!ST^VMKp
+z5t!x0xnCI*Lk$t%?=aM?bAC5Sk&8&Qiu@hZj7DiJ;6#WZd1Z764c#+#;>O(U9%lfW
+z>suxqZ)SVz&lYoFmEAcgM7u2vPU$2e-Hjzv>AJy1PeOk$DMk`K`~^i^seLl#HX2s@
+z&vS?_kECyji(-+eKdk1750r)$2U(RhTgkZT@l<$kC`GSck-TzG(h{pKG1aJhxkqgZ
+zItykNw;mTU?xiP8Q;PAKW4yNPGkd;&0<^_8y4rHh6AzZ1@<X}MHxR~1w*H_dG}N$B
+z&IXplBIDqN@xUP57Z!||jp5Tt&pmdz9L2TW`!AF!hrJB^PxZJR12(Mif-n#R#NUkl
+zx+rtKvE7DS(6^neT}2A9{BXuZ>@Og1z$t3+RoVK`LOEWpvj)dqZ+bn-ZI_R@g2TDm
+zUOXS$8{AioF8c*Kd%<K<R-Azr*inn*=YgH^e2AUys)JPOj=rj?w9#>YqEKoqkyqA=
+z;h>9H=F|lLAffO3sj^3_YLHV~t7o60Afgf+&g?fx9El~tAP}$YS=MFe<j5P)$*$lf
+zAPRmwH9CkE0Y0fD{A=Muw)Eg@o^ck}2J2opVQXezQM5xOn5HmOO_CJGfU}lKQ?fR@
+zOT{BN7o*eaxOLMRMu~Ds9z(B{K}7c!FZs)gKE}_J1be~x@F^v?Vr}mBH~BchgVsA1
+zYBoPZ2rfp9R!W$n8HiA|DU42gKOx-uSytz3^&m|2EPpKhDo+x7&9!omIz@pJU9%AM
+zyf&(ISER(CT)2K&C|4a)z|b-MrvQ;;u1X&@@z1X>#gI{HMPF+3A4XgD2y6V7pZ8*{
+zm8;APEKL9wC2F|aO=CXGJo^TSmQpb}X_X3Im%nsfn-Yr)Ip(;&N*#Ay_m3?ila&Xh
+zA6V?kP!$WD1kP``H7hg@QY|w7?54~1UuB*oXqD_ePJg`i3GPV0EM`;%joWPh;8C{7
+zYdmIemNAl|da??P+nTE06i%eXK303w@_~!CLz4QEZFdnUm~0^2U*Dh4GePdBsTQhV
+zsihVr6*e(LETK(_Y=c5vXJenfn3=4BLe-LG|E6?ccR#tlx)pG=|6cC;SaBt^!li5R
+zcPgX&c2MsDL}~N-O+3=a0$|oiwZm$c)<&SyI4_0A<srpSW;AoK?9|@QWZ?t*0}=T4
+z95c7ZrJhu_jm;5WGD6vHJD(60#@Pgv(k^DF#6E7aA6jG6GBX94bT68~J@fG6iGF*7
+zHT5{&R-&=MjO#)CG|n01+OQ$E>@|JEcP=7FY3^?#Of0zNSfD^&A$%$p{mSW|9&i*6
+zj(_qDpxvBQ=^ptttH-vj$9~Va*80<33lpe5w3*6)d5BABGb>2&T7!J8KM%t$O}n*W
+zJo+7yk8gR<_bN{XJ|u{lon5UfZc>HMFjulERk&KL*jqG{qadfz)xhuQcg|aymb_Y?
+zVYhel3JJX|M+K*)DQMX1IZ`*_*vfscZkpLiT)9gL=cKs}uA(KzRP<4d8#RxOLcE#D
+zJP9@OB>kt#JaeOXaqm4Kc^GYiehxcy4(-(f*^`-a9<3OAl0lXjMU<hs234e~Ga6{D
+zJ?J(F>1<h|nzoDAyszrFJH(&a%{NK>hK=(Co4O{$8%UM|E#&*;l(B?QsiT<hhRy3Q
+zdo`!hEqt}nWSdHIHdieB%+y#>24bqlr*B{Z7V`VuFjMMHlGAysOT^==1z=5qZQ_2R
+z<o0b2(u?qoT2pz=0&G$}du^;#nCdx8xE!J;?vZWx4u|^LC|6ILAHTl|9+|#ph|70a
+zRi!G*cglbdjvBYLI6BL$O5vr@7Os2u*>-1qLb)#p6A6j}B#jg`CWg~=F5uJg4=mk4
+zMbEFlbNEc>OXUCT5piF*6@<3E+@D1YQ`=LOmdxBa$alJ^s;X9Vnwl%91RCi4CyD~~
+zEfY~;r~^+zF4y_)m=yu>0s3+B%|pI?8RS^ct^$kP#XRzE>S#R+#~GhIc~p)Cii4cW
+z9H*m(D~n23;e5HIw0*7&$Qv-cSkS?#GB%E4^9a4Zdg>n0VB=s|P>wkUFR@1Py;++p
+zX;6LW6tT+67ZSct6f1(Z{;9<&8!$Q%dsr@?heJCLyu$kE{QNwMcpba!S7M2R5q^_F
+z1m`x@%z~KA<YbD=KGvUo1=}c}9XjK~V8HD)rtTajaKXxH=c$#&F7^XOeVqIzd^^zc
+zbIWe!=coxS%D8ek3T!6~BFeq>D3f^-kF`7BW3BU>kYEeLw+hLBNDUxD$O}Z7ySX3c
+zb)wd!i4k24w<bSyiZSAUc0Wb@?Uf)*n?=`9#OzE)13Dy(y2(Mw;6+{;LZx1wLEPH1
+z>W1_C2@tbyw%f-8qhJmP`&caiZ`w$^LAjZS5Sn#m^9yX>OCkC~g$Cc7>RooBAs^cU
+zIlTk#)OXQ82-Til1rliQ85sNCA>X3OzZ4b&8XPSua_&2S?i?lbG}vKCBGdB|nXS>g
+zJ0*+o--w^syM8BpvQ@ycNTP2WG0U^*#8-MC0N=cB;m&`}!LXiv%vI8XM1O%D865l(
+z{g6XRuw=jeOMjz9WK|@yzj!yA9i}KA0|SHG<q+`sr<i<Pi`^JhieTLjCMhhg(V-g~
+z1_PW_$(Y*eJP0Pp7w)=LJ3hRf2biP%Vg#-kH(u|)=qji?<Oh@6prwi5!B<IqYZl^Q
+zy6<`LrPq}oMe*koT6dHaWLV6?x2bm~X<_g%6J^i<7ORO)4?2sRit)0sdJ<9yVGvuC
+z0S2mC3WdJ#>1bi12L)S{x7e=_kAN~FN)m7xbSP^arS9Rd{|t-bdQUEl`8{54zNMvQ
+zmVu~1GPeH>P7JxwZV*CX5cIQzmo3E{siDMziZ<Dq{2I|y#mgkKMnYVM8W2_`T`s}4
+zlZye@&UWgvbNqB0;W!R2tbqs1w}M)H)52AfR>%<cunA#0ca#-wneg$WQgYl+Tt&IK
+zGZYz+dp2I6vM2opv&cowpQK+;Q>E7Tl9Q4KN4`#}D9_*vX?k}pO!=)gn7_4Bb4bJT
+zqDaOnV(7U1_j;to@cwADU9mBc-@BdBUmAHSzyI{7YGVPi_y~b*r-e;$%CQnDe?9;8
+zfw~{4mSb>(|FgeRQE<@@i1>JZxfuACaFBgBIQO3(xsqo~Se?tnEhWOPgi|!6k69%H
+zBXMEw6q@;gX1q%5b}P&*(QhwjwHm7%kJPg>aV1XSsKm6t<)rE6*j;x$hUQ|hu`kT)
+zV+}ADC0AEh_W-HRr1Y}-%^FExK~@Y^t(ANZuuEJ`p#^k<`-MWnN77L2@X=9jV+>R;
+zXOQ`#-WMm65hugihkOgXY4OID(WpNU{=B$ZDs8X^hCKKCdranviTkKK>$2J_;-Ga6
+z>WBEX7GD$0K(CoP7J96eYCwj_U5&HrOXJSWm=N0MQ^#7X5>(8zV6XiWLH3_Zh<aeV
+z8Ndz-#X*$y8IDR*%bV{Gp97?Rt^H4qcV^AUv0!gF&}cM84>nV9@qF1Eb95#jw+CTK
+zcnC_X6?w!ouwb8!t?ZeXbU*`_*tn=L1`tKaPq~o#XH-LT(pdaeEr(+5o7_BF^YP^9
+z=s=xqrRelm)Z^rj$VCV;RnXkG!NaMn=)gAL=kN77LMYwzIqFtY;-;Q!9U{UKkl*Z;
+zxmwdAck=k)YYlsT2UM!0spVa*x7IFL)Qt{<T{YYOnY`lQI^(7M2P9V+PsDdz9D4(H
+z_uC&kBA}+QFqdK2PUEuTsqE4@^B*7j;oxh`V9FrWk=ulg?!EAw%IrbyYD#^ur<#gk
+z{LJ1iL0Pzm1nz~Vk`4y?*c=}hc7M0`eSeX3@*qVqdyY+Hm54oWxpS6AC3d*SaOK{i
+zMIb_4DueFcM!U;fEA1C)Sl)|&O>!?hIJJcZxQPc`eiw~~Oj@Tz_oM0xtx3Lb{5kxu
+zyBD?uz>WN#g_E*U&crG80;MCX-DnFuJuz_nIeOw6$6c?&s+F|L2zU?5G!ekeS!llo
+zFPgW-3Pcj<t6*$wk~%olXuylH29jeB{WFT%ocHUz?`>`}O?5W?ab_h%Gy97f=v~(o
+zy&qFFhNcAIGR5-l!~O!ti+&6tBv?y$VCZ!G*COZC^Rd=v3DD{<mn-8DDFj7)a(=aD
+z-Y`eYO%W4BP7x;!8f&Czl<z%!bI}fYCg336HEmrGi|zPZZj1{*hK6sTB{)Db@Ahz<
+zT1Mkrr|m@4hL3vR(STca2f@Pm{<j=dva8hN|ITbW45+Uwv0kNGEfo(G4`o1Ew-Ule
+zDL&3gJ4JO7r9H94%%;<*+Ue2Hkfxn^#;2DxXx2!Ig*@qp$PYUl1}EU&y$jvc$e#Wl
+zL#szfFJmz5&EKaM?Q__+&mY^%Pvr8lW%BDEaVV#`$}|M|w*-7clRhNl6*UQG&ylf%
+zkPu~fTxoQ&W7V_sGsFQ)r8dZ1tToU6^7C;{W7^ylj>VK&YZV`0rM0q-=5@nOTtcx@
+z-`GfyVTF_)=xoTY-xG)BHAl-#;@k>0Kap5G)B~X77JGh`U;(W#+Xleny2|+?3X~v9
+z@j4(Oa(GxV=hv@n1U4Y(PY6pg$c&Ot;)efq)~zTw>;uHy`pS!hYaNUHxEYhbgRg4R
+z+}+}7o`g)4OPEQ|;tiYeawTA$%HmQyClOH{QqjoI$3uxnpv;6|Hoy*8NC^3e-^$N*
+zqqby_w*0S5T>t%`@v?z_`@m;FByBE`COSJ7m_~uq^-Bim*HTzq_chCA9jeHpXN(2n
+zwRqW7h)`1w=SY~Q#F+#wWc43wU)ql>D-{W#MMi*+Rc<(sqj$1IsI?*Vo~~JX4iGFY
+zSjVn{Ia}(<$;mhGkK6li&$laGUX5+PgyS=U#yks+rN3QUeb1{R0P)Mr;duDNP0Yns
+zOl80yG--mz(9cLJmrW%6skc}}J*KYlL*%B2MMfm>8W3{uoeA1tCC<ou*r+;3^qV%^
+zACDHhZT%GhF@?jT47^G`Uefaah!pcZkv5Mk6-LNJdXye&)fqvWHFMeba%$acLKIon
+zKH)D=>=;U0l+}4z>%rz1`1Gu3qlk(DUqGWSub-M#qTbUB+d9M0<eVN_uP7C*u^78~
+z_zX5gA}C@jN@oBD9F3^)Is>69OLgJ6ct8Id?;aM)g-r9s^V6BrQ}Q;SCiP`udh7DC
+zQX$nG;n1i3pom{#4@R?{E?z&>^3sL?I2rH<Wis|q@F<NBuC69-5#ZnDFFs7q#yC7D
+zlpG#bra#0nk!-|k49aBMY~DA!rYSnil)LO^5t1e()wKAhNCbSmBV(ftVL(5Zu#AL-
+zh4=c({?h97ka3R=vuQ0^soDSL2f}Z@U(W!5npx$ud><%HigVl9la73e4N^TR>PE}F
+zsi<mye3$v_EsN{Q<_w8^ag+@iY>3VDlCxI}2NOm!ndIQSbW~gNZ4rN(jki^a>Fbq!
+z<l)or3uqOy1dAU+uAUth3aO6@e{U5Qh#`It<erSmrigfqxCSSjXavqUPoep)0*hU1
+zO&UYWdT?@(8G{DVlAA6~EU%*A5X|H2O-E9#3G=Bi7{1TBx@%AV8+f|Ybl;aE@qnl+
+zCkd`O*1jPhCouv)!2infb-#EBne0c8_r5gc!|J#)6BUR=Pt)|q^$ICN*h)UM<!6Fb
+zPM}6bb^Yg=mw0r+8vw_?%6DThxOft}VRI2VARRI!Oq-8ySp+^+c$5N}Q18|W>qTN5
+zzb`nx8&_h%Jrt7lQxR^o;6yE0jUGfj6BHag<YA6kT{yFf)v+ARIMlT8QG1l)3YU}H
+z*Pu~o<8lbOdU_i9)^FO%4@}E?&DVT8vzm^&_rIl4O$Qr0t>GKnEIbC?*Yeh-mN_p6
+zlP<F1%HMh`B|_%M)VrN&(Cf7+ZT#VL-V?hCQq(DLU8>omN>R(3=k&0Ki-xElR=54S
+ziifTvy<Mb)okM#dm%}X??{BDwcET$SeyB5Q(PFxbKfw?BLh8Zv1L7W@BHWWc4|fy?
+zf^44i3vaFngI^iA^p~c2in^6}?rD5OW*_-2*v{#ucM}uBON)w#4bGqDC)&v<zr`6v
+zxVDr4Ly?#;bx!4S)mKf;<+v6ogdEw@^Tebil}Xo3r{CE;Cew^-9|k(wp*7kRpeKBK
+z+kZzqk_5NkByAMLoqwjnwAVWpux!x@EKt~Oob-cST=7NR1P=|U+uPgS8oq*#f1yDI
+zg@?#3^QaEM@Mih%^g>ozV0-H|T?}miG^F_wtBpw#IDTI~O&zZ=pp6zI7~U;(eX9v~
+z%_Rrklp$gbO-9{o@iq>QY$8+WLWjtqUprlw=!9l&&i<-B;;B?gDuUYF04x={Q|PYo
+z11qyPuIW6^msVN_PE8KdAMXa}bHL6LC^fQ9sh369#H1cfF?JZ}v`b#V$&6F1HA?9-
+z8rMp!9QAw;KUupJE(75s%Q_j;=twh?gcLwR?pti!=J%3LhEmj*cmxEL#xOjNHpVeK
+zJkF%}PF#r=gweO>TUjCt`~eJ7()chG!YE-`x^-8vG;ltjSQ*{>Exm{gthe@Wqr_;)
+z0wt5sLc;HhZgRcM=_rjYuGPk6qTcdMHcs}#u#-NnrJ>ijEn2POpi%bVAyH$%NC@JW
+z!9x#~LZ0#)=w{X8oW39GR&eJl^`<7%yQQ1IMRYe1(f#2jGXHCzX6=QT%WeN8>DptC
+zHdSdtJVzrAI(JAmUV3k0>(|f-Xp$15@*N%7K>n%=8xkhRkB3QAUtf=ah{(e3zoSSq
+z_gFfN{zLz`jCqlr&;1<zEHX&}L?FAirvU!(2Y|Cm1k|>O+r(+F_Z0oUu;MXftO1`Y
+z9;O;>OCXbj;jbt_S7jVfllzmVYhq*#nMM~j1j#8VFg%#?vdErxSYKI2XR#z#^jrF|
+z60VzCe$K!`P7W(fGZ`zDbu=Gj|Fluc!xb3b3?KS{Jm5T)ZILV)F5q8zrZN3x1!?Fl
+zj24#65txQAH>pypq52gcF^Lw8LkW1LoMwVHld&c-soCEOJ`7#g5|?z#rkMgkK7BD?
+zv5)5fIFMR6Y+7b6;Ou);_P~PlRc2e$)>HPum(WG>M&1%61LbYx=>T1OuOHP=A_2Ml
+zUJa0_6*NB&eSM@;e}$dm67YWg_RVCo!)>o6Rkzh4GG20Rk8#RK+5<zUQ@NQZ3;N(k
+z=}G<i9?t87fyDrQ?!$@5$-^dt{VFZcEK`7-dpHK))QVHmNvnXg##tkOmFbjLy3w);
+zLi&t$Avg^pe@MEVBD$GSJ&O%(R0VF7CFR+)b*NFQ&{m1-m5EdlTcHJjaKBrCPsyt#
+z?lhxT$$?5cyPuyctpD}o<31z==H_T#4APvyTFMfUId|z0g6BNHXY!VX5o9&+;>)kj
+zy-EvI3s#yE&SmNou7&*UrnmOiQ_-c!M98x?rSX}WW}0I7mNW&~u)Vo_w^FUmMKUp>
+z8k)=i)!=z!;!K+sl(Lhz*Vd$PEuCsaMon#-vS>REEy6K+i5a(<$=x(75fa)xG@=%o
+zR1GQOG=s!5g(EG{JieFH*|kCh<dflcw;k5Rz|^QeL)V20*~xQ=nQNl8Co89(e%7`}
+zO|Y*q2%F$1-S^d~3cqGi&sR%?%qO&$UU<%F2zNfrqgkBeeboPHkD9=Mq<A2J4`k2c
+z2#PO9Dvm-x$SAQduVt#{QR-CD`BQQv>7=CEGG~xLSIY@MDuIiAnc`G2Ge{P@B(m6G
+z!ibqfOA9p9!7d%@C@Z6Oj!J3yF%OjokW8F{Y}gut?pbEsRm(4LL??RqN~(!1fsK#O
+zx=08kW?ie)L(K_4s$=P~flB)?<W{NF82DcZG5TtJ3lB(x4deiq>RT~0m>*m4)K<a#
+zkFUE0&$xT=s%xFIDmJ3_jGe}tmd$%|o`x+S?pO5xBkt@`6R-gZq_Ir5RrAMWx3z#M
+zQ9wjFASMn0)k6ZbB3aez!=i{JSpJXQ8wSsO{Rx9`8*Jw`It_?=2ZXtDhS&@UE{Sb+
+z1cYBhc~E=d{G<22g7h+UX?|#?E~|WFa&xtJ?xX4@5tiRN+8;Wkgf>}Eg&^ysOF8lN
+zUHK0Q90oI&{$mRN4;~O7eZ2)RYWiOSNUxax118K@axIASH?!$hWN<QDk2~>TeE-m<
+z9|d2NgO0N~GYHc0yR$}HApgS_*(Si(CRarIKe5r*$mNd^46r(X7=_aLFxEIYsbgvH
+znrzh|J#4IY*379ZTcw$}tG6{QE7PnE4Rz`3%NtHKG_U~aaSk@Sx>k@6ej8+~c|Yc1
+zO&By$u_ANpr;D`5D&%W#Fdl9`BhvdZ5`UZwLv{1Hpy9lA>ut_To&@^KV8eBInUrO5
+zh52}zCbS}L24&AucCm_(e?;?E_ef|R)nd$k+BOlW94v|UU~blRLjQ0ZP-4r2%|3Mn
+z>o)c|#p9v2Mo^cLhvg|xC^b2rL@3y2qYKOs?@M}`_`2q==9(4=kTk_PZBIhX-PBrZ
+zr~4n>by9I>XJ-@K+>o8|G;Pd^cW)?r)m~#|TJhd}QmeX{jlF$FjtCHM4zkU<60>Zs
+z%Hys(I^Fbs!^Li)<*(mdMDF~twQ_bC9DMnUdoO<&F-3^A3(9GW4<SRa*?EWyZ`Gfy
+ztp;_7>BH?t7v#5rXa(*RMsaFXpk@rOtgnql#(8*wa~=>H&U<Q|@mQPKi>=;wN0Q<%
+z=~0Qf+>{j>5oC?u{)Ajpd<^k1GgPzB2_X<j6XAKG=I2Pun==pwKj6K56E|&82n<!N
+z*gZh~dZ~XuK-zADh1K|J_h2NrXDF+Utt5Mn{b>=HLz81#(ra*Wz}OO-za_H(wqrv+
+zz0y`v?a{P}lFJz=@BUy(A)pd~b{ghG$JJ7r@AlNxR+>kt6nYMil7}v99Ja?<@UZ3T
+zeP1&kMRSM{5+R84Gc9j#ct$;ly+^es_n)lXhG>_EcB%`8iYCWLpCv8)3~8MaxHrGc
+zWH36`!Flt6p(JJsBEPqrE&gHZ?iZtxyx?@fgPx*GS)g<DtR!|7O#4C3-<&26BCuWt
+zerw17XD^zR2rv@=1^LIVEv%k??XiUQAMc54pe<X1gXwY}D}AUS!dY+~%?)~iLq63N
+zz8@MkUC4>o(Nf7>mW01|;SB);nF)3s-o4wF7D!)tc}@L$K1~NQ<I#C`<^M5#IaG+p
+zY=)o(ILI##h*E;uL~w`+KjxW?7ajugykzXTJqV*@roI?2`+v(0w+pxF_kxqaQOlgT
+zUd)zQ7Gs!mqn%VJ4?;n<-SZAhOQ(_B8C9<RxBSTSNibfqBO+C}`wi089v4cu?tLqd
+zq=x-=;8Gzjeg3ltkL&d6_{$?4@3*dy2VO}1QiS6ksot_FD0X<*W7a!#r)8YzfwCVl
+zX&BA-$m|MbXd}O8pK7$BDw;B&Mm`94Sw7e&aI^~$<2u$ZA{0)8PI!GLrK_X#D|4>b
+z#Yr2Tunx+&wm$nlh2CtbCg8*b5`pf^Y+pukoQ>UqK#>9GQek~Po6Bh899xq^a4oaN
+z9sDuzXNM=T^ExFYu?oyxI-}8y%D;slDQ*$`e5+$KKq!pF-*Qc6*L_WdXk^K$IEown
+zc`-GIjJQlcjeh%cL}$EWcnajL%v-BuW@70M(BzzY-<$NJlWQg2rNIpwvZO(rx6c;G
+z_UBD)7Cj+GP^Rw?)N_Nikx*qcIPWa%MBy?TL-6TWG;|5d3z|f%7il*;Ac9f={o<JQ
+zl^wF%vccP=_}`iM9tJHGMq+Mknc3=s3xOCnkl<o?M;A__7=hTv)ez>-sOWXfH2ow&
+z+F%t%kw65bbTBi=kaCFWiK~y^%2iyKohma@H`Ql2SmxhqN|;zqx3*C&8_FG(8wPqn
+z80VlP%Gr)DvZLLlMf_OsXDo*4wm909tv4{~9yF8NS%e&sJ#dPsVWzk;(a?)XK|KjU
+zmKml2h#A~>%-bFxM<7`wSX>`I?z8$Ca++fy%HqqV=8QYYD~bl^Hz_tBVxFF`f!?T6
+z!OC4>a={OOkbTFV#ew8k2GrG${kNo(r<D-Tit;v+1#X*VhOyM~G7)_|P3Jyv5sQ5#
+z?65T~=4%^@K1D?6sQN|m>cXXA_NWUqI*@?8f!7jnu3$bUg%u}bhY5Q));;cCAc0gS
+zHeTk{K!dAfJ6}@_zTLUn#qe2z2>ZdYkePg(!A+9v>R>`9$hU~PuED*xe7hANwC~xc
+zzMc7YMmZr7Iy0P~w;nbL>dml8nV{FL;+xs}qjWkGV5~K1I6DPEC&#K9z5E?@9vBT9
+zvo#L&#*9687;Wd0D#-M4&3F8(7sFq)qrj$;8%`og3#@6+hSB^|^UtXtP#SOBvdY^G
+znH{rdVJq%P=QxzF3KPx3etK`XD%|1rVH#OZ35YdYtyAh8`vg5MW<WWkk;SsEjw~)f
+z>d_yI4)jPAmo4j_!3e<(RzCocf`Y+$BAs988hq->eMY}S?z>|#t_c*3a#|wBAi{r!
+z{dW0rO)!J3t~1!Um(@E{ATxo*eW!!k$}$1~;aQ@PPH8`A%_SDxVmA)U!Hw)$KXA7$
+zqdYbaY15D(b-OI$URl0+-TYf+!wm}Fwiu|ApRr6t288`7`y!ZbjuZgH`OF0cwYAez
+zqS<wgQ~5PjMPN1qd)3bZ5wArDbnc+RFC;BsJd7!}|JWV>Ft2_caUMO6L4Xk>1Be-C
+zNHX4bgVd8eU&h^$7@$FnL%%Qp$e+fZ(4dAotr#y7!RrZ>u)-F!F&*jOE8kA5rqU||
+zkg!kLmDxaol3FWgZ=YGJwHYE#cf7j}8z24RotEJKC)?r64}@x}^89m-1nf<nRE9gF
+z84<(gIJR9@J1V-~dt|?%zR{qxLvnIV98j`eTA;GJVNB_Y@tKO`o9{#7JseMXJL>0~
+z*_bz@JP+Ml3hd*HWuOR@sNVh74L-Sw?LaYKwKo+rvy}#|aFc!~jT1o|KFR)cI+)Bn
+z7Gg?S>|0zfR!%gT?WBBV*!!8j6W>|lJse7F&5>m#;ooWbRQhP@izf8nK?3n;AClTI
+z6#M340iQgXluMzeY19}<(0FQ=O$wq@ql-?Y9&<2A-S>4Nw#z1Z-(e<j76&JVo#?Yw
+zh)dmRov$*VhlD6Tzkg;rvVHK3C7HAQV{hy8K7WSiQJ%3H_%qwhr-@f?5#goio+=fN
+zU{XsGGr~dTa#)e7rwzgso$wD;2@lXXH||yuwD}&?-@{=a^kD0$wnE#T{{m<i|Krq=
+zao%A00ohlLP`<Yz?^o_stJZ@W6--fq7>OaL`iCMI&1sAHP4i1wfU%}{TH10ti=qYU
+zDz0-eM;$$6p`VP-jrsMCM}MB&A!(m3WE#f9F_{oZS)?8^0-?^g11w23S(X*2v9^k*
+zKU)$N`g+?WLff<~UDFNP<{vgF`ivNrY!#|!D3|%nvN;axyiKQdEH}n|UAvW!JH2@P
+z6TzqIA6}zL<{b4pMQp)4ffz(REKD*y3@}3^xF7ui{>6upo0Tm&dOIrt&>JXx_VQrn
+z?-nhZdK!u;m!%$urT+S%i$tA>aj?l1`%j#jH%{|kdYyAos^NAM25jH<6TePW$nes=
+z1!HeZ;$v}XEv4u4(RnINU~U}<DXJ9z?(o<cCd#Ts`xxm<Y#vf|sb4vLXez4MX3R3~
+z`Lh=&>A*?<y`}>wwCqU9m|k--nxsx^vf5AeRn$pVh?0Mnuc`C!uLu2;Vg{7)wfw`U
+zX;*Wa;BHUq-TwcZ=lb=LAJ!W;9=uX-aQwln)6svvPf%SQ<1JdhQIPpzpQJ_KDid+%
+z!(xv_|7G`-+M9p4uk#~(Mx)cG<|di_EPs|%wf~Qb+;nQM%q9N4&z7FNB6Z+G+^+MR
+zj)|=QD8BER{dSeRdtd$LH*1N?VC!qI+*y}-;)|d<d&<cw#iye6@8<LL%{>!tvt|0N
+zm5Vlct%>!zH1~C#{PXnRXO%R17-p8ep7o3QUvcWms)tYH$`9TvKIF>&@BVzZ?VI=h
+zpErH+ydwvGOs@R*Hs)&kpXVngrCvTXb;0-d@xj~oPM7_l|L;HY`3dlY6p$IBU;poR
+XXyugpZ1#qMfq}u()z4*}Q$iB}^Bg|U
+
+diff --git a/src/test/java/io/papermc/paper/permissions/MinecraftCommandPermissionsTest.java b/src/test/java/io/papermc/paper/permissions/MinecraftCommandPermissionsTest.java
+index 75ed5050f72c001d6eab117a2c0b352a413548bd..2764d4204d51a3615f27b8bfd7b6675294465155 100644
+--- a/src/test/java/io/papermc/paper/permissions/MinecraftCommandPermissionsTest.java
++++ b/src/test/java/io/papermc/paper/permissions/MinecraftCommandPermissionsTest.java
+@@ -46,6 +46,7 @@ public class MinecraftCommandPermissionsTest {
+         Set<String> foundPerms = new HashSet<>();
+         for (CommandNode<CommandSourceStack> child : root.getChildren()) {
+             final String vanillaPerm = VanillaCommandWrapper.getPermission(child);
++            if (TO_SKIP.contains(vanillaPerm)) continue; // Purpur - Skip junit tests for purpur commands
+             if (!perms.contains(vanillaPerm)) {
+                 missing.add("Missing permission for " + child.getName() + " (" + vanillaPerm + ") command");
+             } else {
+@@ -58,6 +59,25 @@ public class MinecraftCommandPermissionsTest {
+     }
+ 
+     private static final List<String> TO_SKIP = List.of(
++        // Purpur start - Skip junit tests for purpur commands
++        "minecraft.command.compass",
++        "minecraft.command.credits",
++        "minecraft.command.demo",
++        "minecraft.command.ping",
++        "minecraft.command.ram",
++        "minecraft.command.rambar",
++        "minecraft.command.tpsbar",
++        "minecraft.command.uptime",
++        "minecraft.command.debug",
++        "minecraft.command.gamemode.adventure",
++        "minecraft.command.gamemode.adventure.other",
++        "minecraft.command.gamemode.creative",
++        "minecraft.command.gamemode.creative.other",
++        "minecraft.command.gamemode.spectator",
++        "minecraft.command.gamemode.spectator.other",
++        "minecraft.command.gamemode.survival",
++        "minecraft.command.gamemode.survival.other",
++        // Purpur end - Skip junit tests for purpur commands
+         "minecraft.command.selector"
+     );
+ 

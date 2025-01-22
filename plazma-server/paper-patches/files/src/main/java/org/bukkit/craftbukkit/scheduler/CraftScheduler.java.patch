@@ -1,0 +1,100 @@
+--- a/src/main/java/org/bukkit/craftbukkit/scheduler/CraftScheduler.java
++++ b/src/main/java/org/bukkit/craftbukkit/scheduler/CraftScheduler.java
+@@ -1,7 +_,6 @@
+ package org.bukkit.craftbukkit.scheduler;
+ 
+ import com.google.common.base.Preconditions;
+-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+ import java.util.ArrayList;
+ import java.util.Comparator;
+ import java.util.Iterator;
+@@ -10,7 +_,6 @@
+ import java.util.concurrent.Callable;
+ import java.util.concurrent.ConcurrentHashMap;
+ import java.util.concurrent.Executor;
+-import java.util.concurrent.Executors;
+ import java.util.concurrent.Future;
+ import java.util.concurrent.atomic.AtomicInteger;
+ import java.util.concurrent.atomic.AtomicReference;
+@@ -65,7 +_,7 @@
+      */
+     private final AtomicInteger ids = new AtomicInteger(CraftScheduler.START_ID);
+     /**
+-     * Current head of linked-list. This reference is always stale, {@link CraftTask#next} is the live reference.
++     * Current head of linked-list. This reference is always stale, {@link CraftTask#getNext()} is the live reference.
+      */
+     private volatile CraftTask head = new CraftTask();
+     /**
+@@ -88,33 +_,17 @@
+     /**
+      * Main thread logic only
+      */
+-    private final List<CraftTask> temp = new ArrayList<CraftTask>();
++    private final List<CraftTask> temp = new ArrayList<>(); // Plazma - Fix IDE warnings
+     /**
+      * These are tasks that are currently active. It's provided for 'viewing' the current state.
+      */
+-    final ConcurrentHashMap<Integer, CraftTask> runners = new ConcurrentHashMap<Integer, CraftTask>(); // Paper
++    final ConcurrentHashMap<Integer, CraftTask> runners = new ConcurrentHashMap<>(); // Paper // Plazma - Fix IDE warnings
+     /**
+      * The sync task that is currently running on the main thread.
+      */
+     private volatile CraftTask currentTask = null;
+-    // Paper start - Improved Async Task Scheduler
+-    volatile int currentTick = -1;/*
+-    private final Executor executor = Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat("Craft Scheduler Thread - %d").build());
+-    private CraftAsyncDebugger debugHead = new CraftAsyncDebugger(-1, null, null) {
+-        @Override
+-        StringBuilder debugTo(StringBuilder string) {
+-            return string;
+-        }
+-    };
+-    private CraftAsyncDebugger debugTail = this.debugHead;
+-
+-    */ // Paper end
+-    private static final int RECENT_TICKS;
+-
+-    static {
+-        RECENT_TICKS = 30;
+-    }
+-
++    volatile int currentTick = -1; // Paper - Improved Async Task Scheduler
++    private static final int RECENT_TICKS = 30; // Plazma - Fix IDE warnings
+ 
+     // Paper start
+     private final CraftScheduler asyncScheduler;
+@@ -490,8 +_,7 @@
+                 }
+                 this.parsePending();
+             } else {
+-                // this.debugTail = this.debugTail.setNext(new CraftAsyncDebugger(this.currentTick + CraftScheduler.RECENT_TICKS, task.getOwner(), task.getTaskClass())); // Paper
+-                task.getOwner().getLogger().log(Level.SEVERE, "Unexpected Async Task in the Sync Scheduler. Report this to Paper"); // Paper
++                task.getOwner().getLogger().log(Level.SEVERE, "Unexpected Async Task in the Sync Scheduler. Report this to Plazma"); // Paper // Plazma - Rebranding
+                 // We don't need to parse pending
+                 // (async tasks must live with race-conditions if they attempt to cancel between these few lines of code)
+             }
+@@ -505,7 +_,6 @@
+         }
+         this.pending.addAll(temp);
+         temp.clear();
+-        //this.debugHead = this.debugHead.getNextHead(this.currentTick); // Paper
+     }
+ 
+     protected void addTask(final CraftTask task) {
+@@ -569,15 +_,7 @@
+ 
+     @Override
+     public String toString() {
+-        // Paper start
+-        return "";
+-        /*
+-        int debugTick = this.currentTick;
+-        StringBuilder string = new StringBuilder("Recent tasks from ").append(debugTick - CraftScheduler.RECENT_TICKS).append('-').append(debugTick).append('{');
+-        this.debugHead.debugTo(string);
+-        return string.append('}').toString();
+-        */
+-        // Paper end
++        return ""; // Paper // Plazma - Minor code improvements
+     }
+ 
+     @Deprecated

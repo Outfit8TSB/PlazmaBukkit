@@ -1,0 +1,75 @@
+--- a/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java
++++ b/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java
+@@ -35,7 +_,11 @@
+     private static final Logger LOGGER = LogUtils.getClassLogger();
+     private static final int DISTANCE_ERROR = -1;
+     private static final int DISTANCE_UNKNOWN = -2;
+-    private static final String DOWNLOAD_PAGE = "https://papermc.io/downloads/paper";
++
++    // Plazma start - Rebranding
++    private static final String GH_REPOSITORY = "PlazmaMC/PlazmaBukkit";
++    private static final String DOWNLOAD_PAGE = "https://plazmamc.org/downloads";
++    // Plazma end - Rebranding
+ 
+     @Override
+     public long getCacheTime() {
+@@ -49,14 +_,14 @@
+         if (build.buildNumber().isEmpty() && build.gitCommit().isEmpty()) {
+             updateMessage = text("You are running a development version without access to version information", color(0xFF5300));
+         } else {
+-            updateMessage = getUpdateStatusMessage("PaperMC/Paper", build);
++            updateMessage = getUpdateStatusMessage(build); // Plazma - Fix IDE warnings
+         }
+         final @Nullable Component history = this.getHistory();
+ 
+         return history != null ? Component.textOfChildren(updateMessage, Component.newline(), history) : updateMessage;
+     }
+ 
+-    private static Component getUpdateStatusMessage(final String repo, final ServerBuildInfo build) {
++    private static Component getUpdateStatusMessage(final ServerBuildInfo build) {
+         int distance = DISTANCE_ERROR;
+ 
+         final OptionalInt buildNumber = build.buildNumber();
+@@ -66,7 +_,7 @@
+             final Optional<String> gitBranch = build.gitBranch();
+             final Optional<String> gitCommit = build.gitCommit();
+             if (gitBranch.isPresent() && gitCommit.isPresent()) {
+-                distance = fetchDistanceFromGitHub(repo, gitBranch.get(), gitCommit.get());
++                distance = fetchDistanceFromGitHub(gitBranch.get(), gitCommit.get());
+             }
+         }
+ 
+@@ -86,18 +_,14 @@
+     private static int fetchDistanceFromSiteApi(final ServerBuildInfo build, final int jenkinsBuild) {
+         try {
+             try (final BufferedReader reader = Resources.asCharSource(
+-                URI.create("https://api.papermc.io/v2/projects/paper/versions/" + build.minecraftVersionId()).toURL(),
++                URI.create("https://ci.codemc.io/job/PlazmaMC/job/Plazma/job/" + build.gitBranch().orElseThrow().replace("/", "%2F") + "/api/json").toURL(), // Plazma - Rebranding
+                 Charsets.UTF_8
+             ).openBufferedStream()) {
+                 final JsonObject json = new Gson().fromJson(reader, JsonObject.class);
+-                final JsonArray builds = json.getAsJsonArray("builds");
+-                final int latest = StreamSupport.stream(builds.spliterator(), false)
+-                    .mapToInt(JsonElement::getAsInt)
+-                    .max()
+-                    .orElseThrow();
++                final int latest = json.getAsJsonObject("lastSuccessfulBuild").getAsJsonPrimitive("number").getAsInt(); // Plazma - Rebranding
+                 return latest - jenkinsBuild;
+             } catch (final JsonSyntaxException ex) {
+-                LOGGER.error("Error parsing json from Paper's downloads API", ex);
++                LOGGER.error("Error parsing data from Jenkins API", ex); // Plazma - Rebranding
+                 return DISTANCE_ERROR;
+             }
+         } catch (final IOException e) {
+@@ -107,9 +_,9 @@
+     }
+ 
+     // Contributed by Techcable <Techcable@outlook.com> in GH-65
+-    private static int fetchDistanceFromGitHub(final String repo, final String branch, final String hash) {
++    private static int fetchDistanceFromGitHub(final String branch, final String hash) {
+         try {
+-            final HttpURLConnection connection = (HttpURLConnection) URI.create("https://api.github.com/repos/%s/compare/%s...%s".formatted(repo, branch, hash)).toURL().openConnection();
++            final HttpURLConnection connection = (HttpURLConnection) URI.create("https://api.github.com/repos/%s/compare/%s...%s".formatted(GH_REPOSITORY, branch, hash)).toURL().openConnection();
+             connection.connect();
+             if (connection.getResponseCode() == HttpURLConnection.HTTP_NOT_FOUND) return DISTANCE_UNKNOWN; // Unknown commit
+             try (final BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), Charsets.UTF_8))) {
